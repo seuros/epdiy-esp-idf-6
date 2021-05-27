@@ -1,5 +1,15 @@
 [![Documentation Status](https://readthedocs.org/projects/epdiy/badge/?version=latest)](https://epdiy.readthedocs.io/en/latest/?badge=latest) [![Matrix](https://img.shields.io/matrix/epdiy-general:matrix.vroland.de?label=Matrix%20Chat)](https://matrix.to/#/!GUXWriqsBKkWyXzsBK:matrix.vroland.de?via=matrix.vroland.de) [![JoinSlack](https://img.shields.io/badge/Join%20us-on%20Slack-blueviolet.svg)](https://join.slack.com/t/epdiy/shared_invite/zt-q4eld5mq-uP_k9IDCFjFx0bDk396WxQ)
 
+EPDiy component only
+=======================================
+
+This repository was originally a fork from EPDiy to contribute with "Software rotation". This is already merged in EPDiy so I decided to keep this fork and make something useful with it. On develop branch is my original update to add rotation and in **master** branch I left a minimal version that can be used as a component submodule in your projects.
+I cannot guarantee that it will be up-to-date with EPDiy but I will check every month if there is an important update and add it. If not please send me an email to the address that you can find in my [Github profile](https://github.com/martinberlin).
+
+**Related works**
+
+At the moment I'm working on a [LVGL fork to add epaper drivers](https://github.com/martinberlin/lv_port_esp32-epaper) to the Light and versatile graphics library. First target is the [Lilygo EPD47](https://github.com/Xinyuan-LilyGO/LilyGo-EPD47) parallel epaper that is supported by EPDiy library. 
+
 EPDiy E-Paper Driver
 =======================================
 
