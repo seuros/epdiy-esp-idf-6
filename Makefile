@@ -1,34 +1,23 @@
-# Rules for generating waveform and font headers from raw data.
+# Makefile for generating waveform header data
 
-SUPPORTRED_DISPLAYS := ED060SC4 ED097OC4 ED097TC2 ED047TC1 ED133UT2 ED060XC3 ED060SCT
+#### WAVEFORM HEADERS TO GENERATE: ########
+all: include/epdiy_ED097TC2.h include/eink_ED097TC2.h include/eink_ED047TC2.h
 
-# Generate 16 grascale update waveforms + epdiy special waveforms
-EXPORTED_MODES ?= 1,2,5,16,17
-
+# Generate 16 grascale update waveforms
+EXPORT_EINK_MODES ?= 1,2,5,16,17
 # Generate waveforms in room temperature range
 EXPORT_TEMPERATURE_RANGE ?= 15,35
 
-# the default headers that should come with the distribution
-default: \
-	$(patsubst %,src/epd_driver/waveforms/epdiy_%.h,$(SUPPORTRED_DISPLAYS))
+HRDGEN ?= ../../scripts/waveform_hdrgen.py
+WAVEFORM_GEN ?= ../../scripts/epdiy_waveform_gen.py
 
-clean:
-	rm src/epd_driver/waveforms/epdiy_*.h
-	rm src/epd_driver/waveforms/eink_*.h
+include/eink_%.h: waveforms/eink_%.json
+	python3 $(HRDGEN) --export-modes $(EXPORT_EINK_MODES) --temperature-range $(EXPORT_TEMPERATURE_RANGE) $* < $< > $@
 
-src/epd_driver/waveforms/epdiy_%.h: src/epd_driver/waveforms/epdiy_%.json
-	python3 scripts/waveform_hdrgen.py \
-		--export-modes $(EXPORTED_MODES) \
-		--temperature-range $(EXPORT_TEMPERATURE_RANGE) \
-		epdiy_$* < $< > $@
+include/epdiy_%.h: waveforms/epdiy_%.json
+	python3 $(HRDGEN) --export-modes $(EXPORT_EINK_MODES) --temperature-range $(EXPORT_TEMPERATURE_RANGE) $* < $< > $@
 
-src/epd_driver/waveforms/eink_%.h: src/epd_driver/waveforms/eink_%.json
-	python3 scripts/waveform_hdrgen.py \
-		--export-modes $(EXPORTED_MODES) \
-		--temperature-range $(EXPORT_TEMPERATURE_RANGE) \
-		eink_$* < $< > $@
+waveforms/epdiy_%.json:
+	python3 $(WAVEFORM_GEN) $* > $@
 
-src/epd_driver/waveforms/epdiy_%.json:
-	python3 scripts/epdiy_waveform_gen.py $* > $@
-
-.PHONY: default
+.PHONY: all
