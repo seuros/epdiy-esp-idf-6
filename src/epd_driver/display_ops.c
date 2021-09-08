@@ -49,16 +49,28 @@ inline static void IRAM_ATTR push_cfg_bit(bool bit) {
 }
 
 void epd_base_init(uint32_t epd_row_width) {
-
+  printf("epd_base_init(%d)\n", epd_row_width);
+  vTaskDelay(200 / portTICK_PERIOD_MS);
+  
   config_reg_init(&config_reg);
 
+  printf("config_reg_init\n");
+  vTaskDelay(200 / portTICK_PERIOD_MS);
+
   /* Power Control Output/Off */
+  printf("Preparing GPIOS DATA:%d CLK:%d STR:%d\n",(uint8_t)CFG_DATA,(uint8_t) CFG_CLK,(uint8_t) CFG_STR);
+  vTaskDelay(200 / portTICK_PERIOD_MS);
+
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_DATA], PIN_FUNC_GPIO);
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_CLK], PIN_FUNC_GPIO);
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_STR], PIN_FUNC_GPIO);
+  
   gpio_set_direction(CFG_DATA, GPIO_MODE_OUTPUT);
   gpio_set_direction(CFG_CLK, GPIO_MODE_OUTPUT);
   gpio_set_direction(CFG_STR, GPIO_MODE_OUTPUT);
+
+  printf("gpio_set_direction DATA CLK STR Done\n");
+  vTaskDelay(200 / portTICK_PERIOD_MS);
 
 #if defined(CONFIG_EPD_BOARD_REVISION_V4) || defined(CONFIG_EPD_BOARD_REVISION_V5)
   // use latch pin as GPIO
@@ -69,6 +81,8 @@ void epd_base_init(uint32_t epd_row_width) {
   fast_gpio_set_lo(CFG_STR);
 
   push_cfg(&config_reg);
+  printf("push_cfg Done\n");
+  vTaskDelay(200 / portTICK_PERIOD_MS);
 
   // Setup I2S
   i2s_bus_config i2s_config;
@@ -86,8 +100,12 @@ void epd_base_init(uint32_t epd_row_width) {
   i2s_config.data_7 = D7;
 
   i2s_bus_init(&i2s_config);
+  printf("Done with i2s_bus_init\n");
+  vTaskDelay(200 / portTICK_PERIOD_MS);
 
   rmt_pulse_init(CKV);
+  printf("rmt_pulse_init. CKV:%d\n", (uint8_t)CKV);
+  vTaskDelay(200 / portTICK_PERIOD_MS);
 }
 
 void epd_poweron() { cfg_poweron(&config_reg);  }

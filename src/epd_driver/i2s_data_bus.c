@@ -1,3 +1,5 @@
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "i2s_data_bus.h"
 #include "driver/periph_ctrl.h"
 #if ESP_IDF_VERSION < (4, 0, 0) || ARDUINO_ARCH_ESP32
@@ -68,7 +70,7 @@ static void gpio_setup_out(int gpio, int sig, bool invert) {
 
 /// Resets "Start Pulse" signal when the current row output is done.
 static void IRAM_ATTR i2s_int_hdl(void *arg) {
-  i2s_dev_t *dev = &I2S1;
+  i2s_dev_t *dev = &I2S0;
   if (dev->int_st.out_done) {
     //gpio_set_level(start_pulse_pin, 1);
     //gpio_set_level(GPIO_NUM_26, 0);
@@ -84,13 +86,13 @@ volatile uint8_t IRAM_ATTR *i2s_get_current_buffer() {
 
 bool IRAM_ATTR i2s_is_busy() {
   // DMA and FIFO must be done
-  return !output_done || !I2S1.state.tx_idle;
+  return !output_done || !I2S0.state.tx_idle;
 }
 
 void IRAM_ATTR i2s_switch_buffer() {
   // either device is done transmitting or the switch must be away from the
   // buffer currently used by the DMA engine.
-  while (i2s_is_busy() && dma_desc_addr() != I2S1.out_link.addr) {
+  while (i2s_is_busy() && dma_desc_addr() != I2S0.out_link.addr) {
   };
   current_buffer = !current_buffer;
 }
@@ -98,7 +100,7 @@ void IRAM_ATTR i2s_switch_buffer() {
 void IRAM_ATTR i2s_start_line_output() {
   output_done = false;
 
-  i2s_dev_t *dev = &I2S1;
+  i2s_dev_t *dev = &I2S0;
   dev->conf.tx_start = 0;
   dev->conf.tx_reset = 1;
   dev->conf.tx_fifo_reset = 1;
@@ -117,6 +119,9 @@ void IRAM_ATTR i2s_start_line_output() {
 
 void i2s_bus_init(i2s_bus_config *cfg) {
   // TODO: Why?
+  printf("Start i2s_bus_init start_pulse:%d\n", cfg->start_pulse);
+  vTaskDelay(100 / portTICK_PERIOD_MS);
+
   gpio_num_t I2S_GPIO_BUS[] = {cfg->data_6, cfg->data_7, cfg->data_4,
                                cfg->data_5, cfg->data_2, cfg->data_3,
                                cfg->data_0, cfg->data_1};
@@ -126,20 +131,29 @@ void i2s_bus_init(i2s_bus_config *cfg) {
   // store pin in global variable for use in interrupt.
   start_pulse_pin = cfg->start_pulse;
 
-  // Use I2S1 with no signal offset (for some reason the offset seems to be
+  // Use I2S0 with no signal offset (for some reason the offset seems to be
   // needed in 16-bit mode, but not in 8 bit mode.
-  int signal_base = I2S1O_DATA_OUT0_IDX;
+  int signal_base = I2S0O_DATA_OUT0_IDX;
+
+  
 
   // Setup and route GPIOS
   for (int x = 0; x < 8; x++) {
+    printf("Route gpios %d to signal %d\n", I2S_GPIO_BUS[x], signal_base + x);
+    vTaskDelay(50 / portTICK_PERIOD_MS);
     gpio_setup_out(I2S_GPIO_BUS[x], signal_base + x, false);
   }
   // Invert word select signal
-  gpio_setup_out(cfg->clock, I2S1O_WS_OUT_IDX, true);
+  printf("Setting CLK:%d\n", cfg->clock);
+  vTaskDelay(50 / portTICK_PERIOD_MS);
 
-  periph_module_enable(PERIPH_I2S1_MODULE);
+  gpio_setup_out(cfg->clock, I2S0O_WS_OUT_IDX, true);
+  printf("Done with gpio_setup_out\n");
+  vTaskDelay(50 / portTICK_PERIOD_MS);
 
-  i2s_dev_t *dev = &I2S1;
+  periph_module_enable(PERIPH_I2S0_MODULE);
+
+  i2s_dev_t *dev = &I2S0;
 
   // Initialize device
   dev->conf.tx_reset = 1;
@@ -178,7 +192,7 @@ void i2s_bus_init(i2s_bus_config *cfg) {
 
   // Set Audio Clock Dividers
   dev->clkm_conf.val = 0;
-  dev->clkm_conf.clka_en = 1;
+  //dev->clkm_conf.clka_en = 1;
   dev->clkm_conf.clkm_div_a = 1;
   dev->clkm_conf.clkm_div_b = 0;
   // 2 is the smallest possible divider according to the spec.
@@ -217,7 +231,7 @@ void i2s_bus_init(i2s_bus_config *cfg) {
   SET_PERI_REG_BITS(I2S_INT_ENA_REG(1), I2S_OUT_DONE_INT_ENA_V, 1,
                     I2S_OUT_DONE_INT_ENA_S);
   // register interrupt
-  esp_intr_alloc(ETS_I2S1_INTR_SOURCE, 0, i2s_int_hdl, 0, &gI2S_intr_handle);
+  esp_intr_alloc(ETS_I2S0_INTR_SOURCE, 0, i2s_int_hdl, 0, &gI2S_intr_handle);
 
   // Reset FIFO/DMA
   dev->lc_conf.in_rst = 1;
@@ -247,6 +261,8 @@ void i2s_bus_init(i2s_bus_config *cfg) {
   dev->int_ena.out_done = 1;
 
   dev->conf.tx_start = 0;
+  printf("Done with I2S initialization\n");
+  vTaskDelay(200 / portTICK_PERIOD_MS);
 }
 
 void i2s_deinit() {
@@ -258,5 +274,5 @@ void i2s_deinit() {
   free((void *)i2s_state.dma_desc_b);
 
   rtc_clk_apll_enable(0, 0, 0, 8, 0);
-  periph_module_disable(PERIPH_I2S1_MODULE);
+  periph_module_disable(PERIPH_I2S0_MODULE);
 }

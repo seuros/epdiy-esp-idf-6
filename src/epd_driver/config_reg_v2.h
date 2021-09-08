@@ -1,4 +1,5 @@
 #include "display_ops.h"
+
 #include <stdint.h>
 
 typedef struct {

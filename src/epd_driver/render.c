@@ -234,6 +234,9 @@ void epd_clear_area_cycles(EpdRect area, int cycles, int cycle_time) {
 
 
 void epd_init(enum EpdInitOptions options) {
+  printf("epd_init\n");
+  vTaskDelay(200 / portTICK_PERIOD_MS);
+
   epd_base_init(EPD_WIDTH);
   epd_temperature_init();
 
@@ -270,7 +273,7 @@ void epd_init(enum EpdInitOptions options) {
 
   RTOS_ERROR_CHECK(xTaskCreatePinnedToCore((void (*)(void *))feed_display,
                                            "epd_feed", 1 << 12, &feed_params,
-                                           5, NULL, 1));
+                                           5, NULL, 0));
 
   //conversion_lut = (uint8_t *)heap_caps_malloc(1 << 16, MALLOC_CAP_8BIT);
   //assert(conversion_lut != NULL);
