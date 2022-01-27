@@ -17,3 +17,7 @@ fp-info-cache
 __pycache__
 examples/weather/components
 sdkconfig
+hardware/epaper-breakout/epaper-breakout-backups
+hardware/epaper-breakout/#auto_saved_files#
+hardware/epaper-breakout/_autosave*
+
