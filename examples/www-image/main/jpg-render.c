@@ -1,3 +1,5 @@
+// Open settings to set WiFi and other configurations for both examples:
+#include "settings.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
@@ -18,7 +20,7 @@
 #include "esp_http_client.h"
 #include "esp_sntp.h"
 
-// JPG decoder
+// JPG decoder is on ESP32 rom for this version
 #if ESP_IDF_VERSION_MAJOR >= 4 // IDF 4+
   #include "esp32/rom/tjpgd.h"
 #else // ESP32 Before IDF 4.0
@@ -34,53 +36,19 @@
 #include "epd_highlevel.h"
 EpdiyHighlevelState hl;
 
-// WiFi configuration. Please fill with your WiFi credentials
-#define ESP_WIFI_SSID     ""
-#define ESP_WIFI_PASSWORD ""
-
-// Image URL and jpg settings. Make sure to update WIDTH/HEIGHT if using loremflickr
-// Note: Only HTTP protocol supported (Check README to use SSL secure URLs) loremflickr
-#define STR_HELPER(x) #x
-#define STR(x) STR_HELPER(x)
-
-#define IMG_URL ("https://loremflickr.com/"STR(EPD_WIDTH)"/"STR(EPD_HEIGHT))
-
-// Please check the README to understand how to use an SSL Certificate
-// Note: This makes a sntp time sync query for cert validation  (It's slower)
-#define VALIDATE_SSL_CERTIFICATE false
-// Alternative non-https URL:
-//#define IMG_URL "http://img.cale.es/jpg/fasani/5e636b0f39aac"
-
-// Jpeg: Adds dithering to image rendering (Makes grayscale smoother on transitions)
-#define JPG_DITHERING true
-// Affects the gamma to calculate gray (lower is darker/higher contrast)
-// Nice test values: 0.9 1.2 1.4 higher and is too bright
-double gamma_value = 0.9;
-
-// As default is 512 without setting buffer_size property in esp_http_client_config_t
-#define HTTP_RECEIVE_BUFFER_SIZE 1536
-
 // Load the EMBED_TXTFILES. Then doing (char*) server_cert_pem_start you get the SSL certificate
 // Reference: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/build-system.html#embedding-binary-data
 extern const uint8_t server_cert_pem_start[] asm("_binary_server_cert_pem_start");
-extern const uint8_t server_cert_pem_end[] asm("_binary_server_cert_pem_end");
-// EPD Waveform
-#define WAVEFORM EPD_BUILTIN_WAVEFORM
-// Minutes that goes to deepsleep after rendering
-// If you build a gallery URL that returns a new image on each request (like cale.es)
-// this parameter can be interesting to make an automatic photo-slider
-#define DEEPSLEEP_MINUTES_AFTER_RENDER 30
-
-#define DEBUG_VERBOSE true
 
 // JPEG decoder
-JDEC jd; 
+JDEC jd;
 JRESULT rc;
+
 // Buffers
 uint8_t *fb;            // EPD 2bpp buffer
 uint8_t *source_buf;    // JPG download buffer
 uint8_t *decoded_image; // RAW decoded image
-static uint8_t tjpgd_work[4096]; // tjpgd 4Kb buffer
+static uint8_t tjpgd_work[3096]; // tjpgd 3096 is the minimum size
 
 uint32_t buffer_pos = 0;
 uint32_t time_download = 0;
@@ -196,7 +164,9 @@ void jpegRender(int xpos, int ypos, int width, int height) {
   uint32_t padding_x = (epd_rotated_display_width() - width) / 2;
   uint32_t padding_y = (epd_rotated_display_height() - height) / 2;
 
-  for (uint32_t by=0; by<height;by++) {
+  ESP_LOGI("Padding", "x:%d y:%d", padding_x, padding_y);
+
+  for (uint32_t by=0; by<height-1;by++) {
     for (uint32_t bx=0; bx<width;bx++) {
         epd_draw_pixel(bx + padding_x, by + padding_y, decoded_image[by * width + bx], fb);
     }
@@ -211,9 +181,9 @@ void deepsleep(){
     esp_deep_sleep(1000000LL * 60 * DEEPSLEEP_MINUTES_AFTER_RENDER);
 }
 
-static uint32_t feed_buffer(JDEC *jd,      
-               uint8_t *buff, // Pointer to the read buffer (NULL:skip) 
-               uint32_t nd 
+static uint32_t feed_buffer(JDEC *jd,
+               uint8_t *buff, // Pointer to the read buffer (NULL:skip)
+               uint32_t nd
 ) {
     uint32_t count = 0;
 
@@ -240,7 +210,7 @@ tjd_output(JDEC *jd,     /* Decompressor object of current session */
   uint32_t h = rect->bottom - rect->top + 1;
   uint32_t image_width = jd->width;
   uint8_t *bitmap_ptr = (uint8_t*)bitmap;
-  
+
   for (uint32_t i = 0; i < w * h; i++) {
 
     uint8_t r = *(bitmap_ptr++);
@@ -259,7 +229,7 @@ tjd_output(JDEC *jd,     /* Decompressor object of current session */
     if (yy < 0 || yy >= jd->height) {
       continue;
     }
-    
+
     /* Optimization note: If we manage to apply here the epd_draw_pixel directly
        then it will be no need to keep a huge raw buffer (But will loose dither) */
     decoded_image[yy * image_width + xx] = gamme_curve[val];
@@ -273,7 +243,7 @@ tjd_output(JDEC *jd,     /* Decompressor object of current session */
 //====================================================================================
 int drawBufJpeg(uint8_t *source_buf, int xpos, int ypos) {
   rc = jd_prepare(&jd, feed_buffer, tjpgd_work, sizeof(tjpgd_work), &source_buf);
-  if (rc != JDR_OK) {    
+  if (rc != JDR_OK) {
     ESP_LOGE(TAG, "JPG jd_prepare error: %s", jd_errors[rc]);
     return ESP_FAIL;
   }
@@ -321,7 +291,7 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
         ++countDataEventCalls;
         #if DEBUG_VERBOSE
           if (countDataEventCalls%10==0) {
-            ESP_LOGI(TAG, "%d len:%d\n", countDataEventCalls, evt->data_len); 
+            ESP_LOGI(TAG, "%d len:%d\n", countDataEventCalls, evt->data_len);
           }
         #endif
         dataLenTotal += evt->data_len;
@@ -346,7 +316,6 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
           epd_hl_update_screen(&hl, MODE_GC16, 25);
 
           ESP_LOGI("total", "%d ms - total time spent\n", time_download+time_decomp+time_render);
-          epd_poweroff();
         }
         break;
 
@@ -359,7 +328,7 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 
 // Handles http request
 static void http_post(void)
-{    
+{
     /**
      * NOTE: All the configuration parameters for http_client must be specified
      * either in URL or as host and path parameters.
@@ -382,7 +351,7 @@ static void http_post(void)
         printf("SSL CERT:\n%s\n\n", (char *)server_cert_pem_start);
       }
     #endif
-    
+
     esp_err_t err = esp_http_client_perform(client);
     if (err == ESP_OK)
     {
@@ -395,10 +364,15 @@ static void http_post(void)
     {
         ESP_LOGE(TAG, "\nHTTP GET request failed: %s", esp_err_to_name(err));
     }
-
-    printf("Go to sleep %d minutes\n", DEEPSLEEP_MINUTES_AFTER_RENDER);
+    
+    
     esp_http_client_cleanup(client);
-    vTaskDelay(10);
+
+    #if MILLIS_DELAY_BEFORE_SLEEP>0
+      vTaskDelay(MILLIS_DELAY_BEFORE_SLEEP / portTICK_RATE_MS);
+    #endif
+    printf("Go to sleep %d minutes\n", DEEPSLEEP_MINUTES_AFTER_RENDER);
+    epd_poweroff();
     deepsleep();
 }
 
@@ -519,7 +493,7 @@ void app_main() {
   epd_init(EPD_LUT_64K | EPD_FEED_QUEUE_8);
   hl = epd_hl_init(WAVEFORM);
   fb = epd_hl_get_framebuffer(&hl);
-
+  epd_set_rotation(DISPLAY_ROTATION);
   decoded_image = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
   if (decoded_image == NULL) {
       ESP_LOGE("main", "Initial alloc back_buf failed!");
@@ -548,7 +522,7 @@ void app_main() {
 
   // WiFi log level set only to Error otherwise outputs too much
   esp_log_level_set("wifi", ESP_LOG_ERROR);
-  
+
   // Initialization: WiFi + clean screen while downloading image
   wifi_init_sta();
   #if VALIDATE_SSL_CERTIFICATE == true
@@ -556,5 +530,19 @@ void app_main() {
   #endif
   epd_poweron();
   epd_fullclear(&hl, 25);
+
+
+  /* printf("EPD w: %d h: %d\n\n", EPD_WIDTH, EPD_HEIGHT);
+  for (uint32_t x = 0; x < EPD_WIDTH; x++) {
+      epd_draw_pixel(x, 0, 0, fb);
+
+      epd_draw_pixel(x, EPD_HEIGHT-10, 80, fb);
+      epd_draw_pixel(x, EPD_HEIGHT-3, 60, fb);
+      // This 2 lines are not written
+      epd_draw_pixel(x, EPD_HEIGHT-2, 0, fb);
+      epd_draw_pixel(x, EPD_HEIGHT-1, 0, fb);
+  }
+  epd_hl_update_screen(&hl, MODE_GC16, 25); */
+  
   http_post();
 }
