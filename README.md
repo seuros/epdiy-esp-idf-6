@@ -1,4 +1,4 @@
-[![Documentation Status](https://readthedocs.org/projects/epdiy/badge/?version=latest)](https://epdiy.readthedocs.io/en/latest/?badge=latest) [![Matrix](https://img.shields.io/matrix/epdiy-general:matrix.vroland.de?label=Matrix%20Chat)](https://matrix.to/#/!GUXWriqsBKkWyXzsBK:matrix.vroland.de?via=matrix.vroland.de) [![JoinSlack](https://img.shields.io/badge/Join%20us-on%20Slack-blueviolet.svg)](https://join.slack.com/t/epdiy/shared_invite/zt-tmg0nyox-J8PPpsKFY2oZC25icFeyqw)
+[![Documentation Status](https://readthedocs.org/projects/epdiy/badge/?version=latest)](https://epdiy.readthedocs.io/en/latest/?badge=latest) [![Matrix](https://img.shields.io/matrix/epdiy-general:matrix.vroland.de?label=Matrix%20Chat)](https://matrix.to/#/!GUXWriqsBKkWyXzsBK:matrix.vroland.de?via=matrix.vroland.de) [![JoinSlack](https://img.shields.io/badge/Join%20us-on%20Slack-blueviolet.svg)](https://join.slack.com/t/epdiy/shared_invite/zt-1242rkd76-WhXtL5rr~__ukWmLumcCSg)
 
 EPDiy E-Paper Driver
 =======================================
@@ -22,22 +22,19 @@ Building It
 
 If you want to build a board right now, there are two possible routes:
 
- - Use the new v5 PCB (`hardware/epaper-breakout/gerbers_v5.zip`). 
-   **So far, I only tested a prototype of it. The newest gerbers should work, but are untested!**
+ - Use the new v6 PCB (`hardware/epaper-breakout/gerbers_v6.zip`). 
+   **So far, I only tested a prototype of it. The gerbers only contain fixes for powering from battery, but have not yet been ordered with.**
    **If you have tested them, please let me know!**
    The BOM is available at (`hardware/epaper-breakout/BOM.csv`).
    Positioning files for SMT assembly are available at (`hardware/epaper-breakout/gerbers/epaper-breakout-top-pos.csv`). 
    Please double check the part positioning and Rotation with your assembly service!
    More information on the order process and where to find parts is in the [documentation](https://epdiy.readthedocs.io/en/latest/getting_started.html#getting-your-board).
  
+   Make sure to select the `V6` board revision in `idf.py menuconfig` when building the examples.
+ 
+ - Use the old v5 PCB (`hardware/epaper-breakout/gerbers_v5.zip`).  
+   This is the last board using the LT1945 booster.
    Make sure to select the `V5` board revision in `idf.py menuconfig` when building the examples.
- 
- - Use the old v4 PCB (`hardware/epaper-breakout/gerbers_v4.zip`). This is a bit more fresh, but should work.
-   The BOM is available at (`hardware/epaper-breakout/BOM.csv`).
-   Positioning files for SMT assembly are available at (`hardware/epaper-breakout/gerbers/epaper-breakout-top-pos.csv`). 
-   Please double check the part positioning and Rotation with your assembly service!
- 
-   Make sure to select the `V4` board revision in `idf.py menuconfig` when building the examples.
 
 Gettings Started
 ----------------
@@ -60,6 +57,8 @@ Displays
 |ED097OC1|9.7"|1200 x 825|yes (should work)|XF2M-3315-1A|33|V2|Cheap, inferior performance
 |ED047TC1|4.7"|960 x 540|yes, tested|40-pin|40|LILYGO 4.7" EPD|Supported only by 4.7" e-paper board by LILYGO
 |ED052TC2|5.2"|960 x 540|yes, tested|40-pin|40|LILYGO 4.7" EPD|Supported only by 4.7" e-paper board by LILYGO
+| ED050SC5 | 5" | 600 x 800 | yes, tested       | THD0510-33CL-GF | 33 | v5 | 
+| ED050SC3 | 5" | 600 x 800 | yes (should work)       | THD0510-33CL-GF | 33 | v5 | 
 |ED133UT2|13.3"|1600 x 1200|yes, tested|adapter board|39|V2|Adapter Board required, also PENG133D
 |ED060XC3|6"|758 x 1024|yes, tested|THD0515-34CL-SN|34|V5|Cheapest, good contrast and resolution
 |ED060XD4|6"|758 x 1024|yes, tested|THD0515-34CL-SN|34|V5|
@@ -72,13 +71,12 @@ Displays
 |ED060SCF|6"|600 x 800|yes, tested|THD0515-34CL-SN|34|V5|Different flex cable shape
 |ED060SCN|6"|600 x 800|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|Different flex cable shape
 |ED060SCP|6"|600 x 800|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|Different flex cable shape
-|ED060SC7|6"|600 x 800|yes (should work) |AXT434124|34|v5|
-|ED060SCG|6"|600 x 800|yes (should work) |AXT434124|34|v5|
-| ED060SCE | 6" | 600 x 800 | yes (should work)  | AXT434124 | 34 | v5 |
-| ED060SCM | 6" | 600 x 800 | yes (should work)  | AXT434124 | 34 | v5 |
-| ED060SCT | 6" | 600 x 800 | yes, tested        | AXT434124 | 34 | v5 |
+| ED060SC7 | 6" | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 |connector dropped in v6
+| ED060SCG | 6" | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 |connector dropped in v6
+| ED060SCE | 6" | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 |connector dropped in v6
+| ED060SCM | 6" | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 |connector dropped in v6
+| ED060SCT | 6" | 600 x 800 | yes, tested       | AXT334124 | 34 | v5 |connector dropped in v6
 
-**Please note that board revision v5 is still in prototype stage!**
 
 Troubleshooting
 ---------------
@@ -106,8 +104,7 @@ Hackaday Project
 For more details, see the project page on Hackaday: https://hackaday.io/project/168193-epdiy-976-e-paper-controller
 
 ![demo image](doc/source/img/demo.jpg)
-![board front](doc/source/img/board_p1.jpg)
-![board back](doc/source/img/board_p2.jpg)
+![board front](doc/source/img/v6.jpg)
 
 Licenses
 --------
