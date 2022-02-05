@@ -15,7 +15,11 @@
 #include "config_reg_v4.h"
 #else
 #if defined(CONFIG_EPD_BOARD_REVISION_V6)
-#include "config_reg_v6.h"
+  #if CONFIG_IDF_TARGET_ESP32S2
+   #include "config_reg_v6_s2.h"
+  #else
+   #include "config_reg_v6.h"
+  #endif
 #else
 #error "unknown revision"
 #endif
