@@ -29,7 +29,7 @@ void idf_loop() {
   enum EpdDrawError _err = epd_hl_update_screen(&hl, MODE_GC16, temperature);
   epd_poweroff();
 
-  vTaskDelay(1000);
+  vTaskDelay(5000);
 }
 
 void idf_setup() {
@@ -41,8 +41,8 @@ void idf_setup() {
 void app_main() {
   idf_setup();
 
-  while (1) {
+  //while (1) {
     idf_loop();
-  };
+  //};
 }
 #endif

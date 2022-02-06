@@ -98,7 +98,7 @@ void epd_base_init(uint32_t epd_row_width) {
   printf("gpio_set_direction DATA CLK STR Done\n");
   vTaskDelay(200 / portTICK_PERIOD_MS);
 
-#if defined(CONFIG_EPD_BOARD_REVISION_V4) || defined(CONFIG_EPD_BOARD_REVISION_V5)
+#if defined(CONFIG_EPD_BOARD_REVISION_V4) || defined(CONFIG_EPD_BOARD_REVISION_V5) || defined(CONFIG_EPD_BOARD_REVISION_V6)
   // use latch pin as GPIO
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[V4_LATCH_ENABLE], PIN_FUNC_GPIO);
   ESP_ERROR_CHECK(gpio_set_direction(V4_LATCH_ENABLE, GPIO_MODE_OUTPUT));
