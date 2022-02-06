@@ -61,14 +61,6 @@ inline static void IRAM_ATTR push_cfg_bit(bool bit) {
 
 void epd_base_init(uint32_t epd_row_width) {
   printf("epd_base_init(%d)\n", epd_row_width);
-  vTaskDelay(200 / portTICK_PERIOD_MS);
-  
-  config_reg_init(&config_reg);
-
-  printf("config_reg_init\n");
-  vTaskDelay(200 / portTICK_PERIOD_MS);
-
-
 
 #if defined(CONFIG_EPD_BOARD_REVISION_V6)
   i2c_config_t conf;
@@ -98,6 +90,10 @@ void epd_base_init(uint32_t epd_row_width) {
   gpio_set_direction(CFG_STR, GPIO_MODE_OUTPUT);
   fast_gpio_set_lo(CFG_STR);
 #endif
+  config_reg_init(&config_reg);
+
+  printf("config_reg_init\n");
+  vTaskDelay(200 / portTICK_PERIOD_MS);
 
   printf("gpio_set_direction DATA CLK STR Done\n");
   vTaskDelay(200 / portTICK_PERIOD_MS);

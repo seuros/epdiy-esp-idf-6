@@ -4,7 +4,7 @@
 #if CONFIG_IDF_TARGET_ESP32S2
   #include "gpio_config_s2.h"
 #else
-  #include "gpio_config.h"
+  #include "gpio_config_esp32.h"
 #endif
 
 void epd_base_init(uint32_t epd_row_width);
