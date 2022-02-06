@@ -122,8 +122,6 @@ void IRAM_ATTR i2s_switch_buffer() {
 }
 
 void IRAM_ATTR i2s_start_line_output() {
-  printf("I2S start %s\n", i2s_used);
-
   output_done = false;
   dev->conf.tx_start = 0;
   dev->conf.tx_reset = 1;
@@ -142,6 +140,7 @@ void IRAM_ATTR i2s_start_line_output() {
 }
 
 void i2s_bus_init(i2s_bus_config *cfg) {
+  printf("i2s_bus_init:%s\n", i2s_used);
   // TODO: Why?
   gpio_num_t I2S_GPIO_BUS[] = {cfg->data_6, cfg->data_7, cfg->data_4,
                                cfg->data_5, cfg->data_2, cfg->data_3,

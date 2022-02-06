@@ -16,6 +16,8 @@
 #define CFG_PIN_PWRGOOD     16
 #define CFG_PIN_INT         17
 
+#define SKIP_TPS_INIT
+#define SILENT_CFG
 
 typedef struct {
     i2c_port_t port;
@@ -37,7 +39,8 @@ static void IRAM_ATTR interrupt_handler(void* arg) {
 int v6_wait_for_interrupt(int timeout) {
 
     int tries = 0;
-    while (!interrupt_done && gpio_get_level(CFG_INTR) == 1) {
+    // Before read CFG_INTR. Other pins should have interrupts too
+    while (!interrupt_done && gpio_get_level(TPS_INTERRUPT) == 1) {
         if (tries >= 500) {
             return -1;
         }
@@ -49,11 +52,13 @@ int v6_wait_for_interrupt(int timeout) {
     //pca9555_read_input(EPDIY_I2C_PORT, 1);
 	ival = tps_read_register(EPDIY_I2C_PORT, TPS_REG_INT1);
 	ival |= tps_read_register(EPDIY_I2C_PORT, TPS_REG_INT2) << 8;
-    while (!gpio_get_level(CFG_INTR)) {vTaskDelay(1); }
+    while (!gpio_get_level(TPS_INTERRUPT)) {vTaskDelay(1); }
     return ival;
 }
 
 void config_reg_init(epd_config_register_t* reg) {
+
+    printf("I2C SCL:%d SDA:%d\n", CFG_SCL, CFG_SDA);
     reg->ep_output_enable = false;
     reg->ep_mode = false;
     reg->ep_stv = false;
@@ -64,13 +69,15 @@ void config_reg_init(epd_config_register_t* reg) {
         reg->others[i] = false;
     }
 
-    gpio_set_direction(CFG_INTR, GPIO_MODE_INPUT);
-    gpio_set_intr_type(CFG_INTR, GPIO_INTR_NEGEDGE);
+    // There are no more CFG_INTR interrupts from PCA9555
+    // TODO: Interrupts should be added for incoming signals from TPS65185
+    gpio_set_direction(TPS_INTERRUPT, GPIO_MODE_INPUT);
+    gpio_set_intr_type(TPS_INTERRUPT, GPIO_INTR_NEGEDGE);
 
     //ESP_ERROR_CHECK(gpio_install_isr_service(ESP_INTR_FLAG_EDGE));
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
 
-    ESP_ERROR_CHECK(gpio_isr_handler_add(CFG_INTR, interrupt_handler, (void *) CFG_INTR));
+    ESP_ERROR_CHECK(gpio_isr_handler_add(TPS_INTERRUPT, interrupt_handler, (void *) TPS_INTERRUPT));
 
     // set all epdiy lines to output except TPS interrupt + PWR good - No more PCA9555
     //ESP_ERROR_CHECK(pca9555_set_config(reg->port, CFG_PIN_PWRGOOD | CFG_PIN_INT, 1));
@@ -81,30 +88,42 @@ void config_reg_init(epd_config_register_t* reg) {
 */
 static void push_cfg(epd_config_register_t* reg) {
     uint8_t value = 0x00;
-    printf("\npush_cfg reg:%x ", (int)reg);
+    //printf("\npush_cfg reg:%x ", (int)reg);
     if (reg->ep_output_enable) {
         value |= CFG_PIN_OE;
+        #ifndef SILENT_CFG
         printf(" CFG_PIN_OE");
+        #endif
     }
     if (reg->ep_mode) {
         value |= CFG_PIN_MODE;
+        #ifndef SILENT_CFG
         printf(" CFG_PIN_MODE");
+        #endif
     }
     if (reg->ep_stv) {
         value |= CFG_PIN_STV;
+        #ifndef SILENT_CFG
         printf(" CFG_PIN_STV");
+        #endif
     }
     if (reg->pwrup) {
         value |= CFG_PIN_PWRUP;
+        #ifndef SILENT_CFG
         printf(" CFG_PIN_PWRUP");
+        #endif
     }
     if (reg->vcom_ctrl) {
         value |= CFG_PIN_VCOM_CTRL;
+        #ifndef SILENT_CFG
         printf(" CFG_PIN_VCOM_CTRL");
+        #endif
     }
     if (reg->wakeup) {
         value |= CFG_PIN_WAKEUP;
+        #ifndef SILENT_CFG
         printf(" CFG_PIN_WAKEUP");
+        #endif
     }
 
     //ESP_ERROR_CHECK(pca9555_set_value(reg->port, value, 1));
@@ -125,7 +144,7 @@ static void cfg_poweron(epd_config_register_t* reg) {
     /* while (!(pca9555_read_input(reg->port, 1) & CFG_PIN_PWRGOOD)) {
         vTaskDelay(1);
     } */
-
+#ifndef SKIP_TPS_INIT
     ESP_ERROR_CHECK(tps_write_register(reg->port, TPS_REG_ENABLE, 0x3F));
 
 #ifdef CONFIG_EPD_DRIVER_V6_VCOM
@@ -147,6 +166,9 @@ static void cfg_poweron(epd_config_register_t* reg) {
         tries++;
         vTaskDelay(1);
     }
+    #else
+    printf("\n\nWarning: TPS initialization skipped using SKIP_TPS_INIT. Power lines will be 0 volt\n");
+    #endif
 }
 
 static void cfg_poweroff(epd_config_register_t* reg) {
@@ -164,8 +186,9 @@ static void cfg_poweroff(epd_config_register_t* reg) {
 static void cfg_deinit(epd_config_register_t* reg) {
     //ESP_ERROR_CHECK(pca9555_set_config(reg->port, CFG_PIN_PWRGOOD | CFG_PIN_INT | CFG_PIN_VCOM_CTRL | CFG_PIN_PWRUP, 1));
 
+    /* 
     int tries = 0;
-    /* while (!((pca9555_read_input(reg->port, 1) & 0xC0) == 0x80)) {
+    while (!((pca9555_read_input(reg->port, 1) & 0xC0) == 0x80)) {
         if (tries >= 500) {
             ESP_LOGE("epdiy", "failed to shut down TPS65185!");
             break;
