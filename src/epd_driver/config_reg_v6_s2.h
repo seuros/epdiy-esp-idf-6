@@ -70,17 +70,24 @@ void config_reg_init(epd_config_register_t* reg) {
     }
 
     // There are no more CFG_INTR interrupts from PCA9555
+    // Control lines are now controlled directly by S2 and should be set as Output
+    gpio_num_t EP_CONTROL[] = {STH, EPD_STV, EPD_MODE, EPD_OE};
+   
+    for (int x = 0; x < 4; x++) {
+        printf("IO %d to LOW (loop:%d)\n", (int)EP_CONTROL[x], x);
+        gpio_set_direction(EP_CONTROL[x], GPIO_MODE_OUTPUT);
+        gpio_set_level(EP_CONTROL[x], 0);
+        
+    }
+    
     // TODO: Interrupts should be added for incoming signals from TPS65185
-    gpio_set_direction(TPS_INTERRUPT, GPIO_MODE_INPUT);
+    /* gpio_set_direction(TPS_INTERRUPT, GPIO_MODE_INPUT);
     gpio_set_intr_type(TPS_INTERRUPT, GPIO_INTR_NEGEDGE);
-
-    //ESP_ERROR_CHECK(gpio_install_isr_service(ESP_INTR_FLAG_EDGE));
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
-
     ESP_ERROR_CHECK(gpio_isr_handler_add(TPS_INTERRUPT, interrupt_handler, (void *) TPS_INTERRUPT));
 
     // set all epdiy lines to output except TPS interrupt + PWR good - No more PCA9555
-    //ESP_ERROR_CHECK(pca9555_set_config(reg->port, CFG_PIN_PWRGOOD | CFG_PIN_INT, 1));
+    ESP_ERROR_CHECK(pca9555_set_config(reg->port, CFG_PIN_PWRGOOD | CFG_PIN_INT, 1)); */
 }
 
 /*
@@ -88,38 +95,37 @@ void config_reg_init(epd_config_register_t* reg) {
 */
 static void push_cfg(epd_config_register_t* reg) {
     uint8_t value = 0x00;
-    //printf("\npush_cfg reg:%x ", (int)reg);
+    #ifndef SILENT_CFG
+        printf("OE:%d MODE:%d STV:%d\n", reg->ep_output_enable,reg->ep_mode,reg->ep_stv);
+    #endif
+    gpio_set_level(EPD_OE, reg->ep_output_enable);
+    gpio_set_level(EPD_MODE, reg->ep_mode);
+    gpio_set_level(EPD_STV, reg->ep_stv);
     if (reg->ep_output_enable) {
         value |= CFG_PIN_OE;
-        #ifndef SILENT_CFG
-        printf(" CFG_PIN_OE");
-        #endif
     }
     if (reg->ep_mode) {
         value |= CFG_PIN_MODE;
-        #ifndef SILENT_CFG
-        printf(" CFG_PIN_MODE");
-        #endif
     }
     if (reg->ep_stv) {
         value |= CFG_PIN_STV;
-        #ifndef SILENT_CFG
-        printf(" CFG_PIN_STV");
-        #endif
     }
     if (reg->pwrup) {
+        // This is signal for the PMIC tpd65185
         value |= CFG_PIN_PWRUP;
         #ifndef SILENT_CFG
         printf(" CFG_PIN_PWRUP");
         #endif
     }
     if (reg->vcom_ctrl) {
+        // This is signal for the PMIC tpd65185
         value |= CFG_PIN_VCOM_CTRL;
         #ifndef SILENT_CFG
         printf(" CFG_PIN_VCOM_CTRL");
         #endif
     }
     if (reg->wakeup) {
+        // This is signal for the PMIC tpd65185
         value |= CFG_PIN_WAKEUP;
         #ifndef SILENT_CFG
         printf(" CFG_PIN_WAKEUP");
