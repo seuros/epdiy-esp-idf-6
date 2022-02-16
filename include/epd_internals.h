@@ -90,7 +90,7 @@ typedef struct {
 extern const EpdWaveform epdiy_ED060SC4;
 extern const EpdWaveform epdiy_ED097OC4;
 extern const EpdWaveform epdiy_ED047TC1;
-extern const EpdWaveform epdiy_ED047TC2;
+extern const EpdWaveform ed047tc2;
 extern const EpdWaveform epdiy_ED097TC2;
 extern const EpdWaveform epdiy_ED060XC3;
 extern const EpdWaveform epdiy_ED060SCT;
