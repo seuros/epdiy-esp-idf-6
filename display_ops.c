@@ -55,6 +55,7 @@ inline static void IRAM_ATTR push_cfg_bit(bool bit) {
 }
 #endif
 
+
 void epd_base_init(uint32_t epd_row_width) {
 
 

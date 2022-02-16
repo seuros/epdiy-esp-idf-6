@@ -1,6 +1,6 @@
 #include "epd_driver.h"
 #include "epd_temperature.h"
-
+#include "tps65185.h"
 #include "esp_assert.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
@@ -469,4 +469,9 @@ void epd_draw_rotated_image(EpdRect image_area, const uint8_t *image_buffer, uin
     } else {
       epd_copy_to_framebuffer(image_area, image_buffer, framebuffer);
     }
+}
+
+int8_t read_tps_temp() {
+  i2c_port_t port = 0;
+  return tps_read_thermistor(port);
 }

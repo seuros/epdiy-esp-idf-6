@@ -46,7 +46,7 @@
 #define EPD_WIDTH 1024
 /// Height of the display area in pixels.
 #define EPD_HEIGHT 758
-#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED047TC2)
+#elif defined(CONFIG_EPD_DISPLAY_TYPE_ED047TC1)
 /// Width of the display area in pixels.
 #define EPD_WIDTH 960
 /// Height of the display area in pixels.
@@ -86,16 +86,17 @@ typedef struct {
 
 
 
-extern const EpdWaveform ed047tc2; // ex epdiy_ED047TC1
+
 extern const EpdWaveform epdiy_ED060SC4;
 extern const EpdWaveform epdiy_ED097OC4;
+extern const EpdWaveform epdiy_ED047TC1;
 extern const EpdWaveform epdiy_ED097TC2;
 extern const EpdWaveform epdiy_ED060XC3;
 extern const EpdWaveform epdiy_ED060SCT;
 extern const EpdWaveform epdiy_ED133UT2;
 
-#if defined(CONFIG_EPD_DISPLAY_TYPE_ED047TC2)
-#define EPD_BUILTIN_WAVEFORM &ed047tc2
+#if defined(CONFIG_EPD_DISPLAY_TYPE_ED047TC1)
+#define EPD_BUILTIN_WAVEFORM &epdiy_ED047TC1
 #elif defined(CONFIG_EPD_DISPLAY_TYPE_ED060SC4)
 #define EPD_BUILTIN_WAVEFORM &epdiy_ED060SC4
 #elif defined(CONFIG_EPD_DISPLAY_TYPE_ED060XC3)
@@ -135,7 +136,7 @@ typedef struct {
   const EpdUnicodeInterval *intervals; ///< Valid unicode intervals for this font
   uint32_t interval_count;    ///< Number of unicode intervals.
   bool compressed;            ///< Does this font use compressed glyph bitmaps?
-  uint8_t advance_y;          ///< Newline distance (y axis)
+  uint16_t advance_y;         ///< Newline distance (y axis)
   int ascender;               ///< Maximal height of a glyph above the base line
   int descender;              ///< Maximal height of a glyph below the base line
 } EpdFont;
