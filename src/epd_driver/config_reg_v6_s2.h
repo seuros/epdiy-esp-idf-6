@@ -16,8 +16,9 @@
 #define CFG_PIN_PWRGOOD     16
 #define CFG_PIN_INT         17
 
-#define SKIP_TPS_INIT
-#define SILENT_CFG
+// Debug when TPS is not yet soldered
+//#define SKIP_TPS_INIT
+//#define SILENT_CFG
 
 typedef struct {
     i2c_port_t port;
@@ -39,6 +40,7 @@ static void IRAM_ATTR interrupt_handler(void* arg) {
 int v6_wait_for_interrupt(int timeout) {
 
     int tries = 0;
+    printf("v6_wait_for_interrupt timeout:%d\n", timeout);
     // Before read CFG_INTR. Other pins should have interrupts too
     while (!interrupt_done && gpio_get_level(TPS_INTERRUPT) == 1) {
         if (tries >= 500) {
@@ -58,7 +60,7 @@ int v6_wait_for_interrupt(int timeout) {
 
 void config_reg_init(epd_config_register_t* reg) {
 
-    printf("I2C SCL:%d SDA:%d\n", CFG_SCL, CFG_SDA);
+    //printf("I2C SCL:%d SDA:%d\n", CFG_SCL, CFG_SDA);
     reg->ep_output_enable = false;
     reg->ep_mode = false;
     reg->ep_stv = false;
@@ -70,86 +72,97 @@ void config_reg_init(epd_config_register_t* reg) {
     }
 
     // There are no more CFG_INTR interrupts from PCA9555
-    // Control lines are now controlled directly by S2 and should be set as Output
-    gpio_num_t EP_CONTROL[] = {STH, EPD_STV, EPD_MODE, EPD_OE};
+    /*  
+     TPS_VCOM_CTRL     Output 
+     TPS_WAKEUP        Output
+     TPS_PWRUP         Output
+     TPS_INTERRUPT     Input
+     TPS_PWRGOOD       Input
+     */
+    // Control lines are now controlled directly  (1->4) by S2
+    // Also TPS65185 control pins are set up here (4->8)
+    gpio_num_t EP_CONTROL[] = {STH, EPD_STV, EPD_MODE, EPD_OE, TPS_WAKEUP, TPS_PWRUP, TPS_VCOM_CTRL};
    
-    for (int x = 0; x < 4; x++) {
+    for (int x = 0; x < 7; x++) {
         printf("IO %d to LOW (loop:%d)\n", (int)EP_CONTROL[x], x);
         gpio_set_direction(EP_CONTROL[x], GPIO_MODE_OUTPUT);
         gpio_set_level(EP_CONTROL[x], 0);
-        
     }
-    
+    gpio_set_direction(TPS_PWRGOOD, GPIO_MODE_INPUT);
     // TODO: Interrupts should be added for incoming signals from TPS65185
-    /* gpio_set_direction(TPS_INTERRUPT, GPIO_MODE_INPUT);
+    gpio_set_direction(TPS_INTERRUPT, GPIO_MODE_INPUT);
     gpio_set_intr_type(TPS_INTERRUPT, GPIO_INTR_NEGEDGE);
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
     ESP_ERROR_CHECK(gpio_isr_handler_add(TPS_INTERRUPT, interrupt_handler, (void *) TPS_INTERRUPT));
 
     // set all epdiy lines to output except TPS interrupt + PWR good - No more PCA9555
-    ESP_ERROR_CHECK(pca9555_set_config(reg->port, CFG_PIN_PWRGOOD | CFG_PIN_INT, 1)); */
+    //ESP_ERROR_CHECK(pca9555_set_config(reg->port, CFG_PIN_PWRGOOD | CFG_PIN_INT, 1));
 }
 
 /*
  Important: Removing PCA9555 means that we should push this config differently
 */
 static void push_cfg(epd_config_register_t* reg) {
-    uint8_t value = 0x00;
+
     #ifndef SILENT_CFG
-        printf("OE:%d MODE:%d STV:%d\n", reg->ep_output_enable,reg->ep_mode,reg->ep_stv);
+        //printf("OE:%d MODE:%d STV:%d\n", reg->ep_output_enable,reg->ep_mode,reg->ep_stv);
     #endif
-    gpio_set_level(EPD_OE, reg->ep_output_enable);
-    gpio_set_level(EPD_MODE, reg->ep_mode);
-    gpio_set_level(EPD_STV, reg->ep_stv);
+    
     if (reg->ep_output_enable) {
-        value |= CFG_PIN_OE;
+        gpio_set_level(EPD_OE, reg->ep_output_enable);
     }
     if (reg->ep_mode) {
-        value |= CFG_PIN_MODE;
+        gpio_set_level(EPD_MODE, reg->ep_mode);
     }
     if (reg->ep_stv) {
-        value |= CFG_PIN_STV;
+        gpio_set_level(EPD_STV, reg->ep_stv);
     }
+
     if (reg->pwrup) {
-        // This is signal for the PMIC tpd65185
-        value |= CFG_PIN_PWRUP;
+        // This is signal for the PMIC tps65185
+        gpio_set_level(TPS_PWRUP, reg->pwrup);
         #ifndef SILENT_CFG
-        printf(" CFG_PIN_PWRUP");
+        printf(" CFG_PIN_PWRUP %d", reg->pwrup);
         #endif
     }
     if (reg->vcom_ctrl) {
-        // This is signal for the PMIC tpd65185
-        value |= CFG_PIN_VCOM_CTRL;
+        // This is signal for the PMIC tps65185
+        gpio_set_level(TPS_VCOM_CTRL, reg->vcom_ctrl);
         #ifndef SILENT_CFG
-        printf(" CFG_PIN_VCOM_CTRL");
+        printf(" CFG_PIN_VCOM_CTRL %d", reg->vcom_ctrl);
         #endif
     }
     if (reg->wakeup) {
-        // This is signal for the PMIC tpd65185
-        value |= CFG_PIN_WAKEUP;
+        // This is signal for the PMIC tps65185
+        gpio_set_level(TPS_WAKEUP, reg->wakeup);
         #ifndef SILENT_CFG
-        printf(" CFG_PIN_WAKEUP");
+        printf(" CFG_PIN_WAKEUP %d ", reg->wakeup);
         #endif
     }
-
-    //ESP_ERROR_CHECK(pca9555_set_value(reg->port, value, 1));
 }
 
 static void cfg_poweron(epd_config_register_t* reg) {
     reg->ep_stv = true;
     reg->wakeup = true;
     push_cfg(reg);
+    vTaskDelay(100);
+
     reg->pwrup = true;
     push_cfg(reg);
     reg->vcom_ctrl = true;
     push_cfg(reg);
 
     // give the IC time to powerup and set lines
-    vTaskDelay(100);
+    vTaskDelay(10);
 
-    /* while (!(pca9555_read_input(reg->port, 1) & CFG_PIN_PWRGOOD)) {
-        vTaskDelay(1);
-    } */
+    printf("\nThermistor °C: %d\n", tps_read_thermistor(EPDIY_I2C_PORT));
+    printf("Waiting for TPS_PWRGOOD...\n");
+    // while (!(pca9555_read_input(reg->port, 1) & CFG_PIN_PWRGOOD)) {
+    while (gpio_get_level(TPS_PWRGOOD) == 0) {
+        vTaskDelay(5);
+    }
+    printf("TPS_PWRGOOD ok\n");
+
 #ifndef SKIP_TPS_INIT
     ESP_ERROR_CHECK(tps_write_register(reg->port, TPS_REG_ENABLE, 0x3F));
 
