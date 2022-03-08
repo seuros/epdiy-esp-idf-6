@@ -93,10 +93,9 @@ void epd_base_init(uint32_t epd_row_width) {
   config_reg_init(&config_reg);
 
   printf("config_reg_init\n");
-  vTaskDelay(200 / portTICK_PERIOD_MS);
+  vTaskDelay(100 / portTICK_PERIOD_MS);
 
   printf("gpio_set_direction DATA CLK STR Done\n");
-  vTaskDelay(200 / portTICK_PERIOD_MS);
 
 #if defined(CONFIG_EPD_BOARD_REVISION_V4) || defined(CONFIG_EPD_BOARD_REVISION_V5) || defined(CONFIG_EPD_BOARD_REVISION_V6)
   // use latch pin as GPIO
@@ -107,7 +106,7 @@ void epd_base_init(uint32_t epd_row_width) {
 
   push_cfg(&config_reg);
   printf("push_cfg Done\n");
-  vTaskDelay(200 / portTICK_PERIOD_MS);
+  vTaskDelay(100 / portTICK_PERIOD_MS);
 
   // Setup I2S
   i2s_bus_config i2s_config;
@@ -126,11 +125,11 @@ void epd_base_init(uint32_t epd_row_width) {
 
   i2s_bus_init(&i2s_config);
   printf("Done with i2s_bus_init\n");
-  vTaskDelay(200 / portTICK_PERIOD_MS);
+  vTaskDelay(100 / portTICK_PERIOD_MS);
 
   rmt_pulse_init(CKV);
   printf("rmt_pulse_init. CKV:%d\n", (uint8_t)CKV);
-  vTaskDelay(200 / portTICK_PERIOD_MS);
+  vTaskDelay(100 / portTICK_PERIOD_MS);
 }
 
 void epd_poweron() { cfg_poweron(&config_reg);  }
@@ -148,7 +147,10 @@ void epd_base_deinit(){
   config_reg.ep_stv = false;
   config_reg.ep_mode = false;
   config_reg.ep_output_enable = false;
-  push_cfg(&config_reg);
+  //push_cfg(&config_reg);
+  gpio_set_level(EPD_STV, 0);
+  gpio_set_level(EPD_MODE, 0);
+  gpio_set_level(EPD_OE, 0);
 #endif
 }
 
@@ -156,17 +158,23 @@ void epd_start_frame() {
   while (i2s_is_busy() || rmt_busy()) {
   };
   config_reg.ep_mode = true;
-  push_cfg(&config_reg);
+  //push_cfg(&config_reg);
+  gpio_set_level(EPD_MODE, 1);
 
   pulse_ckv_us(1, 1, true);
 
   // This is very timing-sensitive!
   config_reg.ep_stv = false;
-  push_cfg(&config_reg);
+  //push_cfg(&config_reg);
+  gpio_set_level(EPD_STV, 0);
+  
   //busy_delay(240);
   pulse_ckv_us(1000, 100, false);
   config_reg.ep_stv = true;
-  push_cfg(&config_reg);
+  
+  //push_cfg(&config_reg);
+  gpio_set_level(EPD_STV, 1);
+  
   //pulse_ckv_us(0, 10, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
@@ -174,7 +182,8 @@ void epd_start_frame() {
   pulse_ckv_us(1, 1, true);
 
   config_reg.ep_output_enable = true;
-  push_cfg(&config_reg);
+  //push_cfg(&config_reg);
+  gpio_set_level(EPD_OE, 1);
 }
 
 static inline void latch_row() {
@@ -226,17 +235,23 @@ void IRAM_ATTR epd_output_row(uint32_t output_time_dus) {
 
 void epd_end_frame() {
   config_reg.ep_stv = false;
-  push_cfg(&config_reg);
+  //push_cfg(&config_reg);
+  gpio_set_level(EPD_STV, 0);
+
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   config_reg.ep_mode = false;
-  push_cfg(&config_reg);
+  //push_cfg(&config_reg);
+  gpio_set_level(EPD_MODE, 0);
+
   pulse_ckv_us(0, 10, true);
   config_reg.ep_output_enable = false;
-  push_cfg(&config_reg);
+  //push_cfg(&config_reg);
+  gpio_set_level(EPD_OE, 0);
+
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);
   pulse_ckv_us(1, 1, true);

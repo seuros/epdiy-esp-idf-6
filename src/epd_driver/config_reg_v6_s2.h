@@ -18,7 +18,7 @@
 
 // Debug when TPS is not yet soldered
 //#define SKIP_TPS_INIT
-//#define SILENT_CFG
+#define SILENT_CFG
 
 typedef struct {
     i2c_port_t port;
@@ -35,12 +35,11 @@ static bool interrupt_done = false;
 
 static void IRAM_ATTR interrupt_handler(void* arg) {
     interrupt_done = true;
+    ets_printf("INT low\n");
 }
 
 int v6_wait_for_interrupt(int timeout) {
-
     int tries = 0;
-    printf("v6_wait_for_interrupt timeout:%d\n", timeout);
     // Before read CFG_INTR. Other pins should have interrupts too
     while (!interrupt_done && gpio_get_level(TPS_INTERRUPT) == 1) {
         if (tries >= 500) {
@@ -51,16 +50,21 @@ int v6_wait_for_interrupt(int timeout) {
     }
     int ival = 0;
     interrupt_done = false;
+    // Why it was doing this in V6?
     //pca9555_read_input(EPDIY_I2C_PORT, 1);
 	ival = tps_read_register(EPDIY_I2C_PORT, TPS_REG_INT1);
-	ival |= tps_read_register(EPDIY_I2C_PORT, TPS_REG_INT2) << 8;
+    
+    int int2 = tps_read_register(EPDIY_I2C_PORT, TPS_REG_INT2);
+    printf("INT1: %d\n", ival);
+    printf("INT2: %d\n", int2);
+	ival |= int2 << 8;
     while (!gpio_get_level(TPS_INTERRUPT)) {vTaskDelay(1); }
     return ival;
 }
 
 void config_reg_init(epd_config_register_t* reg) {
 
-    //printf("I2C SCL:%d SDA:%d\n", CFG_SCL, CFG_SDA);
+    printf("config_reg_init start\n");
     reg->ep_output_enable = false;
     reg->ep_mode = false;
     reg->ep_stv = false;
@@ -94,9 +98,6 @@ void config_reg_init(epd_config_register_t* reg) {
     gpio_set_intr_type(TPS_INTERRUPT, GPIO_INTR_NEGEDGE);
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
     ESP_ERROR_CHECK(gpio_isr_handler_add(TPS_INTERRUPT, interrupt_handler, (void *) TPS_INTERRUPT));
-
-    // set all epdiy lines to output except TPS interrupt + PWR good - No more PCA9555
-    //ESP_ERROR_CHECK(pca9555_set_config(reg->port, CFG_PIN_PWRGOOD | CFG_PIN_INT, 1));
 }
 
 /*
@@ -109,46 +110,46 @@ static void push_cfg(epd_config_register_t* reg) {
     #endif
     
     if (reg->ep_output_enable) {
-        gpio_set_level(EPD_OE, reg->ep_output_enable);
+    gpio_set_level(EPD_OE, reg->ep_output_enable);
     }
-    if (reg->ep_mode) {
-        gpio_set_level(EPD_MODE, reg->ep_mode);
-    }
-    if (reg->ep_stv) {
-        gpio_set_level(EPD_STV, reg->ep_stv);
-    }
+    
+    gpio_set_level(EPD_MODE, reg->ep_mode);
+    
+    gpio_set_level(EPD_STV, reg->ep_stv);
 
-    if (reg->pwrup) {
-        // This is signal for the PMIC tps65185
-        gpio_set_level(TPS_PWRUP, reg->pwrup);
-        #ifndef SILENT_CFG
-        printf(" CFG_PIN_PWRUP %d", reg->pwrup);
-        #endif
-    }
-    if (reg->vcom_ctrl) {
-        // This is signal for the PMIC tps65185
-        gpio_set_level(TPS_VCOM_CTRL, reg->vcom_ctrl);
-        #ifndef SILENT_CFG
-        printf(" CFG_PIN_VCOM_CTRL %d", reg->vcom_ctrl);
-        #endif
-    }
-    if (reg->wakeup) {
-        // This is signal for the PMIC tps65185
-        gpio_set_level(TPS_WAKEUP, reg->wakeup);
-        #ifndef SILENT_CFG
-        printf(" CFG_PIN_WAKEUP %d ", reg->wakeup);
-        #endif
-    }
+    // This is signal for the PMIC tps65185
+    gpio_set_level(TPS_PWRUP, reg->pwrup);
+    #ifndef SILENT_CFG
+    printf(" CFG_PIN_PWRUP %d", reg->pwrup);
+    #endif
+    
+    // This is signal for the PMIC tps65185
+    gpio_set_level(TPS_VCOM_CTRL, reg->vcom_ctrl);
+    #ifndef SILENT_CFG
+    printf(" CFG_PIN_VCOM_CTRL %d", reg->vcom_ctrl);
+    #endif
+    
+    // This is signal for the PMIC tps65185
+    gpio_set_level(TPS_WAKEUP, reg->wakeup);
+    #ifndef SILENT_CFG
+    printf(" CFG_PIN_WAKEUP %d ", reg->wakeup);
+    #endif
 }
 
 static void cfg_poweron(epd_config_register_t* reg) {
+    printf("cfg_poweron!\n");
     reg->ep_stv = true;
     reg->wakeup = true;
     push_cfg(reg);
-    vTaskDelay(100);
+    vTaskDelay(2);
+    printf("wake INT:%d\n\n", v6_wait_for_interrupt(10));
+    vTaskDelay(10);
 
     reg->pwrup = true;
     push_cfg(reg);
+        vTaskDelay(2);
+    printf("pwr INT:%d\n\n", v6_wait_for_interrupt(10));
+
     reg->vcom_ctrl = true;
     push_cfg(reg);
 
