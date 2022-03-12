@@ -89,6 +89,8 @@ void config_reg_init(epd_config_register_t* reg) {
    
     for (int x = 0; x < 7; x++) {
         printf("IO %d to LOW (loop:%d)\n", (int)EP_CONTROL[x], x);
+        // Added because certain Pins like IO42 would not turn HI withouth resetting them first
+        gpio_reset_pin(EP_CONTROL[x]);
         gpio_set_direction(EP_CONTROL[x], GPIO_MODE_OUTPUT);
         gpio_set_level(EP_CONTROL[x], 0);
     }
