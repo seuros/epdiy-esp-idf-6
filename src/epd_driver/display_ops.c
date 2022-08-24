@@ -1,7 +1,13 @@
 #include "display_ops.h"
 #include "esp_timer.h"
 #include "esp_log.h"
-#include "i2s_data_bus.h"
+
+#if CONFIG_IDF_TARGET_ESP32
+  #include "i2s_data_bus.h"
+#elif CONFIG_IDF_TARGET_ESP32S3
+  #include "i2s_data_bus_s3.h"
+#endif
+
 #include "rmt_pulse.h"
 #include "epd_board.h"
 #include "freertos/FreeRTOS.h"

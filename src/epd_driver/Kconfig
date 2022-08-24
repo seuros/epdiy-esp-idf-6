@@ -41,7 +41,8 @@ menu "E-Paper Driver"
 
         config EPD_BOARD_REVISION_LILYGO_T5_47
             bool "LILYGO T5-4.7 inch e-paper"
-
+        config EPD_BOARD_REVISION_LILYGO_S3_47
+            bool "LILYGO S3-4.7 inch e-paper"
         config EPD_BOARD_REVISION_V2_V3
             bool "epdiy v2 / v3"
 
