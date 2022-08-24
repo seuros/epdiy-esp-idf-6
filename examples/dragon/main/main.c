@@ -41,8 +41,8 @@ void idf_setup() {
 void app_main() {
   idf_setup();
 
-  while (1) {
+  //while (1) {
     idf_loop();
-  };
+  //};
 }
 #endif

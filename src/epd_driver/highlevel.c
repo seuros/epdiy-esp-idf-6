@@ -8,6 +8,7 @@
 #include <string.h>
 #include <esp_heap_caps.h>
 #include <esp_log.h>
+#include <esp_timer.h>
 
 #ifndef _swap_int
 #define _swap_int(a, b)                                                        \
@@ -54,7 +55,10 @@ uint8_t* epd_hl_get_framebuffer(EpdiyHighlevelState* state) {
 }
 
 enum EpdDrawError epd_hl_update_screen(EpdiyHighlevelState* state, enum EpdDrawMode mode, int temperature) {
-  return epd_hl_update_area(state, mode, temperature, epd_full_screen());
+  uint64_t startTime = esp_timer_get_time();
+  enum EpdDrawError ok = epd_hl_update_area(state, mode, temperature, epd_full_screen());
+  printf("update_screen() %llu ms\n", (esp_timer_get_time()-startTime)/1000);
+  return ok;
 }
 
 EpdRect _inverse_rotated_area(uint16_t x, uint16_t y, uint16_t w, uint16_t h) {
