@@ -1,17 +1,12 @@
-| Supported Targets | ESP32 | ESP32-C2 | ESP32-C3 | ESP32-H2 | ESP32-S3 |
-| ----------------- | ----- | -------- | -------- | -------- | -------- |
+| Supported Targets | ESP32 | ESP32-S3 (Only when EPDiy is tested with new Lilygo |
+| ----------------- | ----- | -------- |
 
 # ESP-IDF Gatt Server Example
 
 This example shows how create a GATT service by adding attributes one by one. However, this method is defined by Bluedroid and is difficult for users to use.
 
-Hence, we also allow users to create a GATT service with an attribute table, which releases the user from adding attributes one by one. And it is recommended for users to use. For more information about this method, please refer to [gatt_server_service_table_demo](../gatt_server_service_table).
-
-This demo creates GATT a service and then starts advertising, waiting to be connected to a GATT client. 
-
-To test this demo, we can run the [gatt_client_demo](../gatt_client), which can scan for and connect to this demo automatically. They will start exchanging data once the GATT client has enabled the notification function of the GATT server.
-
-Please, check this [tutorial](tutorial/Gatt_Server_Example_Walkthrough.md) for more information about this example.
+Check Espressif GATT server example to see how all this started. 
+Credits on this go to [ATC](https://twitter.com/atc1441) and for the BLE advice to Larry Bank
 
 ## How to Use Example
 
@@ -63,44 +58,6 @@ memcpy(gl_profile_tab[PROFILE_X_APP_ID].service_id.id.uuid.uuid.uuid128, gatts_s
 gl_profile_tab[PROFILE_X_APP_ID].service_id.id.uuid.uuid.uuid16 = GATTS_SERVICE_UUID_TEST_X;
 ```
 
-## Example Output
+### How to send the BLE image
 
-```
-I (0) cpu_start: Starting scheduler on APP CPU.
-I (512) BTDM_INIT: BT controller compile version [1342a48]
-I (522) system_api: Base MAC address is not set
-I (522) system_api: read default base MAC address from EFUSE
-I (522) phy_init: phy_version 4670,719f9f6,Feb 18 2021,17:07:07
-I (922) GATTS_DEMO: REGISTER_APP_EVT, status 0, app_id 0
-
-I (932) GATTS_DEMO: CREATE_SERVICE_EVT, status 0,  service_handle 40
-
-I (942) GATTS_DEMO: REGISTER_APP_EVT, status 0, app_id 1
-
-I (952) GATTS_DEMO: SERVICE_START_EVT, status 0, service_handle 40
-
-I (952) GATTS_DEMO: ADD_CHAR_EVT, status 0,  attr_handle 42, service_handle 40
-
-I (962) GATTS_DEMO: the gatts demo char length = 3
-
-I (962) GATTS_DEMO: prf_char[0] =11
-
-I (972) GATTS_DEMO: prf_char[1] =22
-
-I (972) GATTS_DEMO: prf_char[2] =33
-
-I (982) GATTS_DEMO: CREATE_SERVICE_EVT, status 0,  service_handle 44
-
-I (982) GATTS_DEMO: ADD_DESCR_EVT, status 0, attr_handle 43, service_handle 40
-
-I (992) GATTS_DEMO: SERVICE_START_EVT, status 0, service_handle 44
-
-I (1002) GATTS_DEMO: ADD_CHAR_EVT, status 0,  attr_handle 46, service_handle 44
-
-I (1012) GATTS_DEMO: ADD_DESCR_EVT, status 0, attr_handle 47, service_handle 44
-
-```
-
-## Troubleshooting
-
-For any technical queries, please open an [issue](https://github.com/espressif/esp-idf/issues) on GitHub. We will get back to you soon.
+Just [create an account in CALE.es](https://cale.es) and add a 960*560 Screen. The LilyGo epaper should have this Firmware flashed.  
