@@ -44,7 +44,25 @@ uint8_t* fb; // Framebuffer pointer
 int cursor_x = 0;
 int cursor_y = 0;
 
-#define GATTS_TAG "GATTS_DEMO"
+// JPG decoder from @bitbank2
+#include "JPEGDEC.h"
+
+JPEGDEC jpeg;
+// EXPERIMENTAL: If JPEG_CPY_FRAMEBUFFER is true the JPG is decoded directly in EPD framebuffer
+// On true it looses rotation. Experimental, does not work alright yet. Hint:
+// Check if an uint16_t buffer can be copied in a uint8_t buffer directly
+#define JPEG_CPY_FRAMEBUFFER true
+// Dither space allocation
+uint8_t * dither_space;
+uint8_t *source_buf;    // JPG receive buffer
+uint32_t img_buf_pos = 0;
+// Timers
+#include "esp_timer.h"
+uint32_t time_decomp = 0;
+uint32_t time_render = 0;
+uint64_t start_time = 0;
+
+#define GATTS_TAG "GATTS_JPG"
 
 ///Declare the static function
 static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
@@ -67,7 +85,6 @@ static uint16_t GATTS_CHAR_UUID_TEST_A = 0x180d;
 
 static uint8_t char1_str[] = {0x18,0x0d};
 static esp_gatt_char_prop_t a_property = 0;
-static esp_gatt_char_prop_t b_property = 0;
 
 static esp_attr_value_t gatts_char1_uuid =
 {
@@ -75,13 +92,8 @@ static esp_attr_value_t gatts_char1_uuid =
     .attr_len     = sizeof(char1_str),
     .attr_value   = char1_str,
 };
-/* 
-static esp_attr_value_t gatts_demo_service_val =
-{
-    .attr_max_len = 17,
-    .attr_len     = sizeof(service_str),
-    .attr_value   = service_str,
-}; */
+
+uint16_t received_events = 0;
 
 static uint8_t adv_config_done = 0;
 #define adv_config_flag      (1 << 0)
@@ -97,13 +109,10 @@ static uint8_t raw_scan_rsp_data[] = {
         0x45, 0x4d, 0x4f
 };
 #else
-
-static uint8_t adv_service_uuid128[32] = {
+// TODO: Research how to use this and RAW adv option
+static uint8_t adv_service_uuid128[16] = {
     /* LSB <--------------------------------------------------------------------------------> MSB */
-    //first uuid, 16bit, [12],[13] is the value
     0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0xEE, 0x00, 0x00, 0x00,
-    //second uuid, 32bit, [12], [13], [14], [15] is the value
-    0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00,
 };
 
 // The length of adv data must be less than 31 bytes
@@ -173,25 +182,100 @@ struct gatts_profile_inst {
     esp_bt_uuid_t descr_uuid;
 };
 
-/* One gatt-based profile one app_id and one gatts_if, this array will store the gatts_if returned by ESP_GATTS_REG_EVT */
+/* One gatt-based profile one app_id and one gatts_if, this array will store the gatts_if returned by ESP_GATTS_REG_EVT 
+   .gatts_if state: Not get the gatt_if, so initial is ESP_GATT_IF_NONE
+*/
 static struct gatts_profile_inst gl_profile_tab[PROFILE_NUM] = {
     [PROFILE_A_APP_ID] = {
         .gatts_cb = gatts_profile_a_event_handler,
-        .gatts_if = ESP_GATT_IF_NONE,       /* Not get the gatt_if, so initial is ESP_GATT_IF_NONE */
+        .gatts_if = ESP_GATT_IF_NONE,
     }
 };
 
 typedef struct {
-    uint8_t                 *prepare_buf;
-    int                     prepare_len;
+    uint8_t *prepare_buf;
+    int     prepare_len;
 } prepare_type_env_t;
 
 static prepare_type_env_t a_prepare_write_env;
-static prepare_type_env_t b_prepare_write_env;
 
 extern "C"
 {
     void app_main();
+}
+
+//====================================================================================
+// This program contains support functions to render the Jpeg images
+//
+// JPEGDEC fucntions by Bitbank
+// Refactored by @martinberlin for EPDiy as a Jpeg receive and render example
+//====================================================================================
+
+uint16_t mcu_count = 0;
+
+int JPEGDraw4Bits(JPEGDRAW *pDraw)
+{
+  uint32_t render_start = esp_timer_get_time();
+
+  #if JPEG_CPY_FRAMEBUFFER
+  // Highly experimental: Does not support rotation and gamma correction
+  // Can be washed out compared to JPEG_CPY_FRAMEBUFFER false
+  for (uint16_t yy = 0; yy < pDraw->iHeight; yy++) {
+    // Copy directly horizontal MCU pixels in EPD fb
+    memcpy(&fb[(pDraw->y+yy) * EPD_WIDTH / 2 + pDraw->x / 2], &pDraw->pPixels[(yy * pDraw->iWidth)>>2], pDraw->iWidth);
+  }
+
+  #else 
+    // Rotation aware
+    for (int16_t xx = 0; xx < pDraw->iWidth; xx+=4) {
+      for (int16_t yy = 0; yy < pDraw->iHeight; yy++) {
+        uint16_t col = pDraw->pPixels[ (xx + (yy * pDraw->iWidth)) >>2 ];
+      
+        uint8_t col1 = col & 0xf;
+        uint8_t col2 = (col >> 4) & 0xf;
+        uint8_t col3 = (col >> 8) & 0xf;
+        uint8_t col4 = (col >> 12) & 0xf;
+        epd_draw_pixel(pDraw->x + xx, pDraw->y + yy, gamme_curve[col1 *16], fb);
+        epd_draw_pixel(pDraw->x + xx + 1, pDraw->y + yy, gamme_curve[col2 *16], fb);
+        epd_draw_pixel(pDraw->x + xx + 2, pDraw->y + yy, gamme_curve[col3 *16], fb);
+        epd_draw_pixel(pDraw->x + xx + 3, pDraw->y + yy, gamme_curve[col4 *16], fb);
+
+        /* if (yy==0 && mcu_count==0) {
+          printf("1.%d %d %d %d ",col1,col2,col3,col4);
+        } */
+      }
+    }
+  #endif
+
+  mcu_count++;
+  time_render += (esp_timer_get_time() - render_start) / 1000;
+  return 1;
+}
+
+//====================================================================================
+//   This function opens source_buf Jpeg image file and primes the decoder
+//====================================================================================
+int decodeJpeg(uint8_t *source_buf, int xpos, int ypos) {
+  uint32_t decode_start = esp_timer_get_time();
+
+  if (jpeg.openRAM(source_buf, img_buf_pos, JPEGDraw4Bits)) {
+
+    jpeg.setPixelType(FOUR_BIT_DITHERED);
+    
+    if (jpeg.decodeDither(dither_space, 0))
+      {
+        time_decomp = (esp_timer_get_time() - decode_start)/1000 - time_render;
+        ESP_LOGI("decode", "%d ms - %dx%d image MCUs:%d", time_decomp, jpeg.getWidth(), jpeg.getHeight(), mcu_count);
+      } else {
+        ESP_LOGE("jpeg.decode", "Failed with error: %d", jpeg.getLastError());
+      }
+
+  } else {
+    ESP_LOGE("jpeg.openRAM", "Failed with error: %d", jpeg.getLastError());
+  }
+  jpeg.close();
+  
+  return 1;
 }
 
 void example_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
@@ -372,19 +456,38 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         break;
     }
     case ESP_GATTS_WRITE_EVT: {
-        ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, conn_id %d, trans_id %d, handle %d", param->write.conn_id, param->write.trans_id, param->write.handle);
-        if (!param->write.is_prep){
-            ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, value len %d, value :", param->write.len);
-            esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
+        received_events++;
+        if (received_events == 1) start_time = esp_timer_get_time();
 
-            cursor_y += 30;
-            cursor_x = 10;
-            epd_poweron();
-            char epdtext[32];
-            sprintf(epdtext, "GATT_WRITE_EVT: %d bytes received from Client", param->write.len);
-            epd_write_string(&FONT, epdtext, &cursor_x, &cursor_y, fb, &font_props);
-            epd_hl_update_screen(&hl, MODE_DU, temperature);
-            epd_poweroff();
+        ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, conn_id %d, trans_id %d, handle %d", param->write.conn_id, param->write.trans_id, param->write.handle);
+        
+        if (!param->write.is_prep) {
+            // EOF Receives a single byte with 0x01
+            if (param->write.len == 1 && param->write.value[0] == 0x01) {
+                // Decode & render
+                epd_fullclear(&hl, temperature);
+                ESP_LOGI(GATTS_TAG, "EOF received");
+
+            } else {
+                // Append received data into source_buf
+                memcpy(&source_buf[img_buf_pos], param->write.value, param->write.len);
+                img_buf_pos += param->write.len;
+            }
+
+            ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, value len %d, total:%d", param->write.len, img_buf_pos);
+            
+            if (received_events<3) {
+                esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
+                cursor_y += 30;
+                cursor_x = 10;
+                epd_poweron();
+                char epdtext[32];
+                sprintf(epdtext, "GATT_WRITE_EVT: %d bytes received from Client", param->write.len);
+                epd_write_string(&FONT, epdtext, &cursor_x, &cursor_y, fb, &font_props);
+                epd_hl_update_screen(&hl, MODE_DU, temperature);
+                epd_poweroff();
+
+            }
 
             if (gl_profile_tab[PROFILE_A_APP_ID].descr_handle == param->write.handle && param->write.len == 2){
                 uint16_t descr_value = param->write.value[1]<<8 | param->write.value[0];
@@ -573,7 +676,16 @@ void app_main(void)
     hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
     fb = epd_hl_get_framebuffer(&hl);
     epd_poweron();
-    epd_fullclear(&hl, temperature);
+    dither_space = (uint8_t *)heap_caps_malloc(EPD_WIDTH *16, MALLOC_CAP_SPIRAM);
+    if (dither_space == NULL) {
+        ESP_LOGE("main", "Initial alloc ditherSpace failed!");
+    }
+
+    // Should be big enough to allocate the JPEG file size, width * height should suffice
+    source_buf = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
+    if (source_buf == NULL) {
+        ESP_LOGE("main", "Initial alloc source_buf failed!");
+    }
 
     font_props = epd_font_properties_default();
     font_props.flags = EPD_DRAW_ALIGN_CENTER;
