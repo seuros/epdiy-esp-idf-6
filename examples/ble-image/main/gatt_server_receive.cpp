@@ -60,6 +60,7 @@ uint32_t img_buf_pos = 0;
 #include "esp_timer.h"
 uint32_t time_decomp = 0;
 uint32_t time_render = 0;
+uint32_t time_receive = 0;
 uint64_t start_time = 0;
 
 #define GATTS_TAG "GATTS_JPG"
@@ -459,18 +460,37 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         received_events++;
         if (received_events == 1) start_time = esp_timer_get_time();
 
-        ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, conn_id %d, trans_id %d, handle %d", param->write.conn_id, param->write.trans_id, param->write.handle);
+          //ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, conn_id %d, trans_id %d, handle %d", param->write.conn_id, param->write.trans_id, param->write.handle);
         
         if (!param->write.is_prep) {
             // EOF Receives a single byte with 0x01
             if (param->write.len == 1 && param->write.value[0] == 0x01) {
                 // Decode & render
-                epd_fullclear(&hl, temperature);
                 ESP_LOGI(GATTS_TAG, "EOF received");
+                // Decode & render
+                time_receive = (esp_timer_get_time()-start_time)/1000;
+                decodeJpeg(source_buf, 0, 0);
+
+                ESP_LOGI("ble-rec", "%d ms - download", time_receive);
+                ESP_LOGI("render", "%d ms - copying pix (JPEG_CPY_FRAMEBUFFER:%d)", time_render, JPEG_CPY_FRAMEBUFFER);
+
+                epd_poweron();
+                epd_hl_update_screen(&hl, MODE_GC16, 25);
+                epd_poweroff();
+                // RESET Pointers
+                img_buf_pos = 0;
+                time_decomp = 0;
+                time_render = 0;
+                time_receive = 0;
+                start_time = 0;
 
             } else {
                 // Append received data into source_buf
                 memcpy(&source_buf[img_buf_pos], param->write.value, param->write.len);
+                if (received_events<3) {
+                  esp_log_buffer_hex("IMG_SRC", &source_buf[img_buf_pos], param->write.len);
+                }
+
                 img_buf_pos += param->write.len;
             }
 
@@ -622,6 +642,12 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
     }
     case ESP_GATTS_DISCONNECT_EVT:
         ESP_LOGI(GATTS_TAG, "ESP_GATTS_DISCONNECT_EVT, disconnect reason 0x%x", param->disconnect.reason);
+
+        // Refresh display
+        /* epd_poweron();
+        epd_hl_update_screen(&hl, MODE_GC16, 25);
+        epd_poweroff(); */
+
         esp_ble_gap_start_advertising(&adv_params);
         break;
     case ESP_GATTS_CONF_EVT:
