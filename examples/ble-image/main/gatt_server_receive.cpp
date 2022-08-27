@@ -26,7 +26,7 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "esp_bt.h"
-
+#include <math.h> // round + pow
 #include "esp_gap_ble_api.h"
 #include "esp_gatts_api.h"
 #include "esp_bt_defs.h"
@@ -51,11 +51,14 @@ JPEGDEC jpeg;
 // EXPERIMENTAL: If JPEG_CPY_FRAMEBUFFER is true the JPG is decoded directly in EPD framebuffer
 // On true it looses rotation. Experimental, does not work alright yet. Hint:
 // Check if an uint16_t buffer can be copied in a uint8_t buffer directly
-#define JPEG_CPY_FRAMEBUFFER true
+#define JPEG_CPY_FRAMEBUFFER false
 // Dither space allocation
 uint8_t * dither_space;
-uint8_t *source_buf;    // JPG receive buffer
+uint8_t *source_buf;      // JPG receive buffer
 uint32_t img_buf_pos = 0;
+uint8_t gamme_curve[256]; // Internal array for gamma grayscale
+// Nice test values: 0.9 1.2 1.4 higher and is too bright
+double gamma_value = 0.9;
 // Timers
 #include "esp_timer.h"
 uint32_t time_decomp = 0;
@@ -475,7 +478,7 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
                 ESP_LOGI("render", "%d ms - copying pix (JPEG_CPY_FRAMEBUFFER:%d)", time_render, JPEG_CPY_FRAMEBUFFER);
 
                 epd_poweron();
-                epd_hl_update_screen(&hl, MODE_GC16, 25);
+                epd_hl_update_screen(&hl, MODE_GC16, temperature);
                 epd_poweroff();
                 // RESET Pointers
                 img_buf_pos = 0;
@@ -487,9 +490,6 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
             } else {
                 // Append received data into source_buf
                 memcpy(&source_buf[img_buf_pos], param->write.value, param->write.len);
-                if (received_events<3) {
-                  esp_log_buffer_hex("IMG_SRC", &source_buf[img_buf_pos], param->write.len);
-                }
 
                 img_buf_pos += param->write.len;
             }
@@ -498,14 +498,15 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
             
             if (received_events<3) {
                 esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
-                cursor_y += 30;
+                // Should write a minimal line to show progress
+                /* cursor_y += 30;
                 cursor_x = 10;
                 epd_poweron();
                 char epdtext[32];
                 sprintf(epdtext, "GATT_WRITE_EVT: %d bytes received from Client", param->write.len);
                 epd_write_string(&FONT, epdtext, &cursor_x, &cursor_y, fb, &font_props);
                 epd_hl_update_screen(&hl, MODE_DU, temperature);
-                epd_poweroff();
+                epd_poweroff(); */
 
             }
 
@@ -624,6 +625,9 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
     case ESP_GATTS_STOP_EVT:
         break;
     case ESP_GATTS_CONNECT_EVT: {
+        epd_poweron();
+        epd_fullclear(&hl, temperature);
+        epd_poweroff();
         esp_ble_conn_update_params_t conn_params = {0};
         memcpy(conn_params.bda, param->connect.remote_bda, sizeof(esp_bd_addr_t));
         /* For the IOS system, please reference the apple official documents about the ble connection parameters restrictions. */
@@ -698,6 +702,10 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
 
 void app_main(void)
 {
+    double gammaCorrection = 1.0 / gamma_value;
+    for (int gray_value =0; gray_value<256;gray_value++) {
+        gamme_curve[gray_value]= round (255*pow(gray_value/255.0, gammaCorrection));
+    }
     epd_init(EPD_OPTIONS_DEFAULT);
     hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
     fb = epd_hl_get_framebuffer(&hl);
@@ -718,7 +726,15 @@ void app_main(void)
     int cursor_x = epd_rotated_display_width() / 2;
     int cursor_y = epd_rotated_display_height() - 30;
     epd_write_string(&FONT, "Initializing BLE server", &cursor_x, &cursor_y, fb, &font_props);
-    
+    epd_poweron();
+    EpdRect area = {
+        .x = cursor_x,
+        .y = cursor_y,
+        .width = 500,
+        .height = 30
+    };
+    epd_hl_update_area(&hl, MODE_DU, temperature, area);
+    epd_poweroff();
     esp_err_t ret;
 
     // Initialize NVS.
@@ -781,8 +797,6 @@ void app_main(void)
         ESP_LOGE(GATTS_TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
     }
     font_props.flags = EPD_DRAW_ALIGN_LEFT;
-    epd_hl_update_screen(&hl, MODE_DU, temperature);
-    epd_poweroff();
     cursor_y = 10;
     return;
 }
