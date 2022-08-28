@@ -161,7 +161,8 @@ void i2s_gpio_detach(i2s_bus_config *cfg) {
   gpio_set_direction(cfg->clock, GPIO_MODE_INPUT);
 
   gpio_reset_pin(cfg->clock);
-  rtc_gpio_isolate(cfg->clock);
+  // Generates error in Lilygo models
+  //rtc_gpio_isolate(cfg->clock);
 }
 
 void i2s_bus_init(i2s_bus_config *cfg, uint32_t epd_row_width) {
