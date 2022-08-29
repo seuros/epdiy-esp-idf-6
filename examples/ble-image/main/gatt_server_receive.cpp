@@ -58,7 +58,7 @@ uint8_t *source_buf;      // JPG receive buffer
 uint32_t img_buf_pos = 0;
 uint8_t gamme_curve[256]; // Internal array for gamma grayscale
 // Nice test values: 0.9 1.2 1.4 higher and is too bright
-double gamma_value = 0.9;
+double gamma_value = 1.4;
 // Timers
 #include "esp_timer.h"
 uint32_t time_decomp = 0;
@@ -285,6 +285,15 @@ int decodeJpeg(uint8_t *source_buf, int xpos, int ypos) {
 void example_write_event_env(esp_gatt_if_t gatts_if, prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
 void example_exec_write_event_env(prepare_type_env_t *prepare_write_env, esp_ble_gatts_cb_param_t *param);
 
+void reset_variables() {
+    img_buf_pos = 0;
+    time_decomp = 0;
+    time_render = 0;
+    time_receive = 0;
+    start_time = 0;
+    received_events = 0;
+}
+
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
     switch (event) {
@@ -461,15 +470,23 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
     }
     case ESP_GATTS_WRITE_EVT: {
         received_events++;
-        if (received_events == 1) start_time = esp_timer_get_time();
+        bool is_short_cmd = false;
+        if (received_events == 2) start_time = esp_timer_get_time();
 
-          //ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, conn_id %d, trans_id %d, handle %d", param->write.conn_id, param->write.trans_id, param->write.handle);
+        //ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, conn_id %d, trans_id %d, handle %d", param->write.conn_id, param->write.trans_id, param->write.handle);
         
         if (!param->write.is_prep) {
-            // EOF Receives a single byte with 0x01
-            if (param->write.len == 1 && param->write.value[0] == 0x01) {
+            // content-length: 4 bytes uint32
+            if (received_events == 1 && param->write.len == 5 && param->write.value[0] == 0x01) {
+                is_short_cmd = true;
+                ESP_LOGI(GATTS_TAG, "0x01 content-lenght received");
+                esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
+            }
+            // 0x09 EOF
+            if (param->write.len == 1 && param->write.value[0] == 0x09) {
+                is_short_cmd = true;
                 // Decode & render
-                ESP_LOGI(GATTS_TAG, "EOF received");
+                ESP_LOGI(GATTS_TAG, "0x09 EOF received");
                 // Decode & render
                 time_receive = (esp_timer_get_time()-start_time)/1000;
                 decodeJpeg(source_buf, 0, 0);
@@ -481,34 +498,21 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
                 epd_hl_update_screen(&hl, MODE_GC16, temperature);
                 epd_poweroff();
                 // RESET Pointers
-                img_buf_pos = 0;
-                time_decomp = 0;
-                time_render = 0;
-                time_receive = 0;
-                start_time = 0;
+                reset_variables();
+            }
 
-            } else {
-                // Append received data into source_buf
+            if (!is_short_cmd) {
+                // Receive data: Append bytes into source_buf
                 memcpy(&source_buf[img_buf_pos], param->write.value, param->write.len);
-
                 img_buf_pos += param->write.len;
+
+                ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, value len %d, total:%d", param->write.len, img_buf_pos);
             }
 
-            ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, value len %d, total:%d", param->write.len, img_buf_pos);
-            
-            if (received_events<3) {
+            // Debug received bytes
+            /* if (received_events<3) {
                 esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
-                // Should write a minimal line to show progress
-                /* cursor_y += 30;
-                cursor_x = 10;
-                epd_poweron();
-                char epdtext[32];
-                sprintf(epdtext, "GATT_WRITE_EVT: %d bytes received from Client", param->write.len);
-                epd_write_string(&FONT, epdtext, &cursor_x, &cursor_y, fb, &font_props);
-                epd_hl_update_screen(&hl, MODE_DU, temperature);
-                epd_poweroff(); */
-
-            }
+            } */
 
             if (gl_profile_tab[PROFILE_A_APP_ID].descr_handle == param->write.handle && param->write.len == 2){
                 uint16_t descr_value = param->write.value[1]<<8 | param->write.value[0];
@@ -550,14 +554,14 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
         break;
     }
     case ESP_GATTS_EXEC_WRITE_EVT:
-        ESP_LOGI(GATTS_TAG,"ESP_GATTS_EXEC_WRITE_EVT");
-        esp_ble_gatts_send_response(gatts_if, param->write.conn_id, param->write.trans_id, ESP_GATT_OK, NULL);
-        example_exec_write_event_env(&a_prepare_write_env, param);
+        ESP_LOGE(GATTS_TAG, "ESP_GATTS_EXEC_WRITE_EVT not implemented. Do not send chunks > 896 bytes");
+    
         break;
     case ESP_GATTS_MTU_EVT:
         ESP_LOGI(GATTS_TAG, "ESP_GATTS_MTU_EVT, MTU %d", param->mtu.mtu);
         break;
     case ESP_GATTS_UNREG_EVT:
+        ESP_LOGI(GATTS_TAG, "ESP_GATTS_UNREG_EVT");
         break;
     case ESP_GATTS_CREATE_EVT:
     {
@@ -646,11 +650,7 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
     }
     case ESP_GATTS_DISCONNECT_EVT:
         ESP_LOGI(GATTS_TAG, "ESP_GATTS_DISCONNECT_EVT, disconnect reason 0x%x", param->disconnect.reason);
-
-        // Refresh display
-        /* epd_poweron();
-        epd_hl_update_screen(&hl, MODE_GC16, 25);
-        epd_poweroff(); */
+        reset_variables();
 
         esp_ble_gap_start_advertising(&adv_params);
         break;
