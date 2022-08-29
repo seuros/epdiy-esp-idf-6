@@ -65,6 +65,13 @@ uint32_t time_decomp = 0;
 uint32_t time_render = 0;
 uint32_t time_receive = 0;
 uint64_t start_time = 0;
+uint32_t received_length = 0;
+
+// Draws a progress bar when downloading (Just a demo: is faster without it)
+// And also writes in the same framebuffer as the image
+#define DOWNLOAD_PROGRESS_BAR true
+uint8_t progressBarHeight = 12;
+
 
 #define GATTS_TAG "GATTS_JPG"
 
@@ -207,6 +214,23 @@ extern "C"
 {
     void app_main();
 }
+
+
+
+void progressBar(long processed, long total)
+{
+    //printf("%d %d\n",processed,total);
+  int percentage = round(processed * EPD_WIDTH / total);
+  EpdRect p_area = {
+      .x = 0,
+      .y = 0,
+      .width = percentage,
+      .height = progressBarHeight
+  };
+  epd_fill_rect(p_area, 0, fb);
+  epd_hl_update_area(&hl, MODE_DU, temperature, p_area);
+}
+
 
 //====================================================================================
 // This program contains support functions to render the Jpeg images
@@ -479,7 +503,13 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
             // content-length: 4 bytes uint32
             if (received_events == 1 && param->write.len == 5 && param->write.value[0] == 0x01) {
                 is_short_cmd = true;
-                ESP_LOGI(GATTS_TAG, "0x01 content-lenght received");
+                received_length = 
+                param->write.value[1] + 
+                (param->write.value[2] << 8) +
+                (param->write.value[3] << 16) +
+                (param->write.value[4] << 24);
+                ESP_LOGI(GATTS_TAG, "0x01 content-lenght received:%d", received_length);
+
                 esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
             }
             // 0x09 EOF
@@ -513,6 +543,11 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
             /* if (received_events<3) {
                 esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
             } */
+            if (received_events%20 == 0) {
+                epd_poweron();
+                progressBar(img_buf_pos, received_length);
+                epd_poweroff();
+            }
 
             if (gl_profile_tab[PROFILE_A_APP_ID].descr_handle == param->write.handle && param->write.len == 2){
                 uint16_t descr_value = param->write.value[1]<<8 | param->write.value[0];
@@ -700,6 +735,20 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     } while (0);
 }
 
+void write_text(EpdFontProperties font_prop, int x, int y, char* text) {
+    epd_poweron();
+    EpdRect area = {
+        .x = x,
+        .y = y-30,
+        .width = EPD_WIDTH,
+        .height = 40
+    };
+    epd_clear_area(area);
+    epd_write_string(&FONT, text, &x, &y, fb, &font_props);
+    epd_hl_update_area(&hl, MODE_DU, temperature, area);
+    epd_poweroff();
+}
+
 void app_main(void)
 {
     double gammaCorrection = 1.0 / gamma_value;
@@ -709,7 +758,7 @@ void app_main(void)
     epd_init(EPD_OPTIONS_DEFAULT);
     hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
     fb = epd_hl_get_framebuffer(&hl);
-    epd_poweron();
+    
     dither_space = (uint8_t *)heap_caps_malloc(EPD_WIDTH *16, MALLOC_CAP_SPIRAM);
     if (dither_space == NULL) {
         ESP_LOGE("main", "Initial alloc ditherSpace failed!");
@@ -722,19 +771,16 @@ void app_main(void)
     }
 
     font_props = epd_font_properties_default();
-    font_props.flags = EPD_DRAW_ALIGN_CENTER;
-    int cursor_x = epd_rotated_display_width() / 2;
+    font_props.bg_color = 255;
+    font_props.fg_color = 0;
+    font_props.flags = EPD_DRAW_ALIGN_LEFT;
+    int cursor_x = 10;
     int cursor_y = epd_rotated_display_height() - 30;
-    epd_write_string(&FONT, "Initializing BLE server", &cursor_x, &cursor_y, fb, &font_props);
-    epd_poweron();
-    EpdRect area = {
-        .x = cursor_x,
-        .y = cursor_y,
-        .width = 500,
-        .height = 30
-    };
-    epd_hl_update_area(&hl, MODE_DU, temperature, area);
-    epd_poweroff();
+    
+    write_text(font_props, cursor_x, cursor_y, "BLE initialized");
+    cursor_y-= 40;
+    write_text(font_props, cursor_x, cursor_y, "Use Chrome only. Recommended: cale.es");
+    
     esp_err_t ret;
 
     // Initialize NVS.
