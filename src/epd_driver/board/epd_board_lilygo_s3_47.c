@@ -1,7 +1,7 @@
 #include "epd_board.h"
 
 #include "../display_ops.h"
-#include "../i2s_data_bus_s3.h"
+#include "i2s_data_bus_s3.h"
 #include "../rmt_pulse.h"
 
 /* If not S3 this GPIO_NUMs will fail */
@@ -105,7 +105,7 @@ static void epd_board_set_ctrl(epd_ctrl_state_t *state, const epd_ctrl_state_t *
 }
 
 static void epd_board_poweron(epd_ctrl_state_t *state) {
-  i2s_gpio_attach(&i2s_config);
+  //i2s_gpio_attach(&i2s_config);
 
   // This was re-purposed as power enable.
   config_reg.ep_scan_direction = true;
@@ -157,7 +157,7 @@ void epd_powerdown_lilygo_t5_47() {
   config_reg.power_disable = true;
   epd_board_set_ctrl(state, &mask);
 
-  i2s_gpio_detach(&i2s_config);
+  //i2s_gpio_detach(&i2s_config);
 }
 
 static void epd_board_poweroff_common(epd_ctrl_state_t *state) {
@@ -183,7 +183,7 @@ static void epd_board_poweroff_common(epd_ctrl_state_t *state) {
   config_reg.power_disable = true;
   epd_board_set_ctrl(state, &mask);
 
-  i2s_gpio_detach(&i2s_config);
+  //i2s_gpio_detach(&i2s_config);
   // END POWEROFF
 }
 

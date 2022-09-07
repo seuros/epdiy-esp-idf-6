@@ -11,8 +11,9 @@
 
 #include <driver/gpio.h>
 #include <esp_attr.h>
-
 #include <stdint.h>
+
+#include <rom/gpio.h>
 
 /******************************************************************************/
 /***        macro definitions                                               ***/

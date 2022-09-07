@@ -70,7 +70,7 @@ uint32_t received_length = 0;
 // Draws a progress bar when downloading (Just a demo: is faster without it)
 // And also writes in the same framebuffer as the image
 #define DOWNLOAD_PROGRESS_BAR true
-uint8_t progressBarHeight = 12;
+uint8_t progressBarHeight = 4;
 
 
 #define GATTS_TAG "GATTS_JPG"

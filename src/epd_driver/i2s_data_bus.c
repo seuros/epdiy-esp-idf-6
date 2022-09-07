@@ -1,5 +1,6 @@
-#include "i2s_data_bus.h"
+#if CONFIG_IDF_TARGET_ESP32
 
+#include "i2s_data_bus.h"
 #include "driver/rtc_io.h"
 #include "esp_system.h"
 #if ESP_IDF_VERSION < (4, 0, 0) || ARDUINO_ARCH_ESP32
@@ -300,3 +301,4 @@ void i2s_deinit() {
 
   periph_module_disable(PERIPH_I2S1_MODULE);
 }
+#endif

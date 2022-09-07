@@ -12,7 +12,6 @@
 #include "epd_board.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-
 #include "xtensa/core-macros.h"
 
 static epd_ctrl_state_t ctrl_state;

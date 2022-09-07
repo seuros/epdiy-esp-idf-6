@@ -1,8 +1,9 @@
 #include "rmt_pulse.h"
 #include "driver/rmt.h"
 #include "esp_system.h"
-
+#if CONFIG_IDF_TARGET_ESP32
 #include "soc/rmt_struct.h"
+#endif
 
 static intr_handle_t gRMT_intr_handle = NULL;
 
@@ -17,7 +18,9 @@ volatile bool rmt_tx_done = true;
  */
 static void IRAM_ATTR rmt_interrupt_handler(void *arg) {
   rmt_tx_done = true;
+  #if CONFIG_IDF_TARGET_ESP32
   RMT.int_clr.val = RMT.int_st.val;
+  #endif
 }
 
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
@@ -49,17 +52,24 @@ void rmt_pulse_init(gpio_num_t pin) {
   #if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 2, 0) && ESP_IDF_VERSION > ESP_IDF_VERSION_VAL(4, 0, 2)
     #error "This driver is not compatible with IDF version 4.1.\nPlease use 4.0 or >= 4.2!"
   #endif
-  esp_intr_alloc(ETS_RMT_INTR_SOURCE, ESP_INTR_FLAG_LEVEL3,
+  
+  #if CONFIG_IDF_TARGET_ESP32
+    esp_intr_alloc(ETS_RMT_INTR_SOURCE, ESP_INTR_FLAG_LEVEL3,
                  rmt_interrupt_handler, 0, &gRMT_intr_handle);
 
-  rmt_config(&row_rmt_config);
-  rmt_set_tx_intr_en(row_rmt_config.channel, true);
+    rmt_config(&row_rmt_config);
+    rmt_set_tx_intr_en(row_rmt_config.channel, true);
+  #elif CONFIG_IDF_TARGET_ESP32S3
+    rmt_config(&row_rmt_config);
+    rmt_driver_install(RMT_CHANNEL_1, 0, 0);
+  #endif
 }
 
 void IRAM_ATTR pulse_ckv_ticks(uint16_t high_time_ticks,
                                uint16_t low_time_ticks, bool wait) {
-  while (!rmt_tx_done) {
-  };
+  #if CONFIG_IDF_TARGET_ESP32
+    while (!rmt_tx_done) {};
+  #endif
   volatile rmt_item32_t *rmt_mem_ptr =
       &(RMTMEM.chan[row_rmt_config.channel].data32[0]);
   if (high_time_ticks > 0) {
@@ -73,13 +83,17 @@ void IRAM_ATTR pulse_ckv_ticks(uint16_t high_time_ticks,
     rmt_mem_ptr->level1 = 0;
     rmt_mem_ptr->duration1 = 0;
   }
-  RMTMEM.chan[row_rmt_config.channel].data32[1].val = 0;
-  rmt_tx_done = false;
-  RMT.conf_ch[row_rmt_config.channel].conf1.mem_rd_rst = 1;
-  RMT.conf_ch[row_rmt_config.channel].conf1.mem_owner = RMT_MEM_OWNER_TX;
-  RMT.conf_ch[row_rmt_config.channel].conf1.tx_start = 1;
-  while (wait && !rmt_tx_done) {
-  };
+  #if CONFIG_IDF_TARGET_ESP32
+    RMTMEM.chan[row_rmt_config.channel].data32[1].val = 0;
+    rmt_tx_done = false;
+    RMT.conf_ch[row_rmt_config.channel].conf1.mem_rd_rst = 1;
+    RMT.conf_ch[row_rmt_config.channel].conf1.mem_owner = RMT_MEM_OWNER_TX;
+    RMT.conf_ch[row_rmt_config.channel].conf1.tx_start = 1;
+    while (wait && !rmt_tx_done) {
+    };
+  #elif CONFIG_IDF_TARGET_ESP32S3
+    rmt_write_items(row_rmt_config.channel, &rmt_mem_ptr, 1, wait);
+  #endif
 }
 
 void IRAM_ATTR pulse_ckv_us(uint16_t high_time_us, uint16_t low_time_us,
