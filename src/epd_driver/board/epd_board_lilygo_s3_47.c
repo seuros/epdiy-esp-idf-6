@@ -3,14 +3,12 @@
 #include "../display_ops.h"
 #include "i2s_data_bus_s3.h"
 #include "../rmt_pulse.h"
+#include "epd_internals.h" // EPD_WIDTH
 
-/* If not S3 this GPIO_NUMs will fail */
-#if CONFIG_IDF_TARGET_ESP32S3
 /* Config Register Control */
 #define CFG_DATA GPIO_NUM_13
 #define CFG_CLK GPIO_NUM_12
 #define CFG_STR GPIO_NUM_0
-
 
 /* Data Lines */
 #define D7 GPIO_NUM_7
@@ -52,7 +50,7 @@ static i2s_bus_config i2s_config = {
   .data_6 = D6,
   .data_7 = D7,
   // add an offset off dummy bytes to allow for enough timing headroom
-  .epd_row_width = 960+ 32
+  .epd_row_width = EPD_WIDTH + 32
 };
 
 static void IRAM_ATTR push_cfg_bit(bool bit) {
@@ -95,7 +93,7 @@ static void epd_board_init(uint32_t epd_row_width) {
   gpio_set_direction(CFG_DATA, GPIO_MODE_OUTPUT);
   gpio_set_direction(CFG_CLK, GPIO_MODE_OUTPUT);
   gpio_set_direction(CFG_STR, GPIO_MODE_OUTPUT);
-  
+
   /* Power Control Output/Off */
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_DATA], PIN_FUNC_GPIO);
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_CLK], PIN_FUNC_GPIO);
@@ -237,4 +235,3 @@ const EpdBoardDefinition epd_board_lilygo_s3_47_touch = {
   .temperature_init = NULL,
   .ambient_temperature = NULL,
 };
-#endif

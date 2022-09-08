@@ -1,7 +1,5 @@
-/* If not S3 this will fail since has no LCD module*/
-//#if CONFIG_IDF_TARGET_ESP32S3
-
 #include "i2s_data_bus_s3.h"
+
 #include <driver/periph_ctrl.h>
 #include <esp_heap_caps.h>
 #include <rom/lldesc.h>
@@ -11,20 +9,15 @@
 #include "esp_lcd_panel_io.h"
 #include "esp_err.h"
 #include "esp_log.h"
-// error: 'PIN_FUNC_GPIO' undeclared
-#include <gpio_periph.c>
+#include <gpio_periph.c>  // Otherwise: 'PIN_FUNC_GPIO' undeclared
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-
-/******************************************************************************/
-/***        type definitions                                                ***/
-/******************************************************************************/
+#include "epd_internals.h" // EPD_WIDTH
 
 static const char *TAG = "I80";
 
 /// DMA descriptors for front and back line buffer.
-/// We use two buffers, so one can be filled while the other
-/// is transmitted.
+/// We use two buffers, so one can be filled while the other is transmitted.
 typedef struct
 {
     volatile lldesc_t *dma_desc_a;
@@ -36,44 +29,6 @@ typedef struct
 } i2s_parallel_state_t;
 
 static esp_lcd_panel_io_handle_t io_handle = NULL;
-
-/******************************************************************************/
-/***        local function prototypes                                       ***/
-/******************************************************************************/
-
-/**
- * @brief Initializes a DMA descriptor.
- */
-static void fill_dma_desc(volatile lldesc_t *dmadesc, uint8_t *buf, i2s_bus_config *cfg);
-
-/**
- * @brief Address of the currently front DMA descriptor, which uses only the
- *        lower 20bits (according to TRM)
- */
-static uint32_t dma_desc_addr();
-
-/**
- * @brief Set up a GPIO as output and route it to a signal.
- */
-static void gpio_setup_out(int32_t gpio, int32_t sig, bool invert);
-
-/**
- * @brief Resets "Start Pulse" signal when the current row output is done.
- */
-static void IRAM_ATTR i2s_int_hdl(void *arg);
-
-/******************************************************************************/
-/***        exported variables                                              ***/
-/******************************************************************************/
-
-/******************************************************************************/
-/***        local variables                                                 ***/
-/******************************************************************************/
-
-/**
- * @brief Indicates which line buffer is currently back / front.
- */
-static int32_t current_buffer = 0;
 
 /**
  * @brief The I2S state instance.
@@ -87,13 +42,8 @@ static intr_handle_t gI2S_intr_handle = NULL;
  */
 static volatile bool output_done = true;
 
-/**
- * @brief The start pulse pin extracted from the configuration for use in
- *        the "done" interrupt.
- */
-static gpio_num_t start_pulse_pin;
-// TODO: This should be a dynamic EPD_WIDTH if we will use this for other displays
-static uint8_t buffer[(960 + 32) / 4] = { 0 };
+
+static uint8_t buffer[(EPD_WIDTH + 32) / 4] = { 0 };
 
 volatile uint8_t IRAM_ATTR *i2s_get_current_buffer()
 {
@@ -105,15 +55,12 @@ bool IRAM_ATTR i2s_is_busy()
     return !output_done;
 }
 
-void IRAM_ATTR i2s_switch_buffer()
-{
-}
+void IRAM_ATTR i2s_switch_buffer() {}
 
-// TODO EPD_WIDTH should be dynamic
 void IRAM_ATTR i2s_start_line_output()
 {
     output_done = false;
-    esp_lcd_panel_io_tx_color(io_handle, 0, buffer, (960 + 32) / 4);
+    esp_lcd_panel_io_tx_color(io_handle, 0, buffer, (EPD_WIDTH + 32) / 4);
 }
 
 
@@ -133,7 +80,7 @@ void i2s_bus_init(i2s_bus_config *cfg)
     esp_lcd_i80_bus_handle_t i80_bus = NULL;
     esp_lcd_i80_bus_config_t bus_config = {
         // Withouth clk_src parameter in V5 it just hangs on esp_lcd_new_i80_bus instantiation
-        .clk_src = LCD_CLK_SRC_DEFAULT,
+        .clk_src = LCD_CLK_SRC_PLL160M,
         .dc_gpio_num = cfg->start_pulse,
         .wr_gpio_num = cfg->clock,
         .data_gpio_nums = {
@@ -154,11 +101,11 @@ void i2s_bus_init(i2s_bus_config *cfg)
     if (err) {
         ESP_LOGI(TAG, "ERROR: %d", err);
     }
-
+    // pclk_hz = 10 * 1000 * 1000 -> What Lilygo uses
     esp_lcd_panel_io_i80_config_t io_config = {
         .cs_gpio_num = -1,
-        .pclk_hz = 10 * 1000 * 1000,
-        .trans_queue_depth = 10,
+        .pclk_hz = 5 * 1000 * 1000,
+        .trans_queue_depth = 4,
         .dc_levels = {
             .dc_idle_level = 0,
             .dc_cmd_level = 1,
@@ -187,43 +134,3 @@ void i2s_deinit()
 
     periph_module_disable(PERIPH_I2S1_MODULE);
 }
-
-/******************************************************************************/
-/***        local functions                                                 ***/
-/******************************************************************************/
-
-/// Initializes a DMA descriptor.
-static void fill_dma_desc(volatile lldesc_t *dmadesc, uint8_t *buf,
-                          i2s_bus_config *cfg)
-{
-    dmadesc->size = cfg->epd_row_width / 4;
-    dmadesc->length = cfg->epd_row_width / 4;
-    dmadesc->buf = buf;
-    dmadesc->eof = 1;
-    dmadesc->sosf = 1;
-    dmadesc->owner = 1;
-    dmadesc->qe.stqe_next = 0;
-    dmadesc->offset = 0;
-}
-
-
-/// Address of the currently front DMA descriptor,
-/// which uses only the lower 20bits (according to TRM)
-static uint32_t dma_desc_addr()
-{
-    return (uint32_t)(current_buffer ? i2s_state.dma_desc_a : i2s_state.dma_desc_b) & \
-                     0x000FFFFF;
-}
-
-
-/// Set up a GPIO as output and route it to a signal.
-static void gpio_setup_out(int32_t gpio, int32_t sig, bool invert)
-{
-    if (gpio == -1) return;
-
-    PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[gpio], PIN_FUNC_GPIO);
-    gpio_set_direction(gpio, GPIO_MODE_DEF_OUTPUT);
-    gpio_matrix_out(gpio, sig, invert, false);
-}
-
-//#endif

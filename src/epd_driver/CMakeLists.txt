@@ -15,7 +15,7 @@ set(app_sources "epd_driver.c"
                 "board/epd_board_common.c"
 )
 # Add this sources only when MCU is ESP32
-if (IDF_TARGET_ESP32) 
+if (CONFIG_IDF_TARGET_ESP32)
 list(APPEND app_sources
                 "i2s_data_bus.c"
                 "board/epd_board_lilygo_t5_47.c"

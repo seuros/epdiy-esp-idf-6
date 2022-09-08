@@ -2,26 +2,16 @@
  * Implements a 8bit parallel interface to transmit pixel
  * data to the display, based on the I2S peripheral.
  */
+#ifdef __cplusplus
+extern "C" {
 
+#endif
 #pragma once
-
-/******************************************************************************/
-/***        include files                                                   ***/
-/******************************************************************************/
 
 #include <driver/gpio.h>
 #include <esp_attr.h>
 #include <stdint.h>
-
 #include <rom/gpio.h>
-
-/******************************************************************************/
-/***        macro definitions                                               ***/
-/******************************************************************************/
-
-/******************************************************************************/
-/***        type definitions                                                ***/
-/******************************************************************************/
 
 /**
  * I2S bus configuration parameters.
@@ -82,15 +72,6 @@ bool IRAM_ATTR i2s_is_busy();
  */
 void i2s_deinit();
 
-/******************************************************************************/
-/***       ^ END OF FILE Lilygo S3 version ^                                                    ***/
-/******************************************************************************/
-/*
- * Attach I2S to gpio's
- */
-void i2s_gpio_attach(i2s_bus_config *cfg);
-
-/**
- * Detach I2S from gpio's
- */
-void i2s_gpio_detach(i2s_bus_config *cfg);
+#ifdef __cplusplus
+}
+#endif
