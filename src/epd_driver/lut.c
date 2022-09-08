@@ -73,8 +73,15 @@ void IRAM_ATTR write_row(uint32_t output_time_dus) {
 
 // skip a display row
 void IRAM_ATTR skip_row(uint8_t pipeline_finish_time) {
+  if (skipping == 0)
+    {
+        epd_switch_buffer();
+        memset(epd_get_current_buffer(), 0, EPD_LINE_BYTES);
+        epd_switch_buffer();
+        memset(epd_get_current_buffer(), 0, EPD_LINE_BYTES);
+        epd_output_row(pipeline_finish_time);
   // output previously loaded row, fill buffer with no-ops.
-  if (skipping < 2) {
+  } else if (skipping < 2) {
     memset(epd_get_current_buffer(), 0x00, EPD_LINE_BYTES);
     epd_output_row(pipeline_finish_time);
   } else {

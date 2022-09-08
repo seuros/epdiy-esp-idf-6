@@ -135,6 +135,8 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
       err = epd_draw_base(epd_full_screen(), state->difference_fb, diff_area, MODE_PACKING_1PPB_DIFFERENCE | mode, temperature, state->dirty_lines, state->waveform);
   }
 
+  // Skip this for Lilygo S3 since it's not using 2 buffers
+  #ifndef CONFIG_EPD_BOARD_REVISION_LILYGO_S3_47
   for (int l=diff_area.y; l < diff_area.y + diff_area.height; l++) {
 	if (state->dirty_lines[l] > 0) {
       uint8_t* lfb = state->front_fb + EPD_WIDTH / 2 * l;
@@ -149,6 +151,8 @@ enum EpdDrawError epd_hl_update_area(EpdiyHighlevelState* state, enum EpdDrawMod
       }
 	}
   }
+  #endif
+
   return err;
 }
 

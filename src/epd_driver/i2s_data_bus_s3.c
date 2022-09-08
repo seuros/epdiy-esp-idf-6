@@ -15,25 +15,13 @@
 #include "epd_internals.h" // EPD_WIDTH
 
 static const char *TAG = "I80";
-
-/// DMA descriptors for front and back line buffer.
-/// We use two buffers, so one can be filled while the other is transmitted.
-typedef struct
-{
-    volatile lldesc_t *dma_desc_a;
-    volatile lldesc_t *dma_desc_b;
-
-    /// Front and back line buffer.
-    uint8_t *buf_a;
-    uint8_t *buf_b;
-} i2s_parallel_state_t;
+/**
+ * @brief Note that in ESP32 version with I2C in LCD mode it was using 2 buffers
+ *        This version is not doing that and I think that is the reason that is slower
+ *        But I'm not sure how is possible to do that in new esp_lcd component, needs more research
+ */
 
 static esp_lcd_panel_io_handle_t io_handle = NULL;
-
-/**
- * @brief The I2S state instance.
- */
-static i2s_parallel_state_t i2s_state;
 
 static intr_handle_t gI2S_intr_handle = NULL;
 
@@ -99,13 +87,13 @@ void i2s_bus_init(i2s_bus_config *cfg)
     
     esp_err_t err = esp_lcd_new_i80_bus(&bus_config, &i80_bus);
     if (err) {
-        ESP_LOGI(TAG, "ERROR: %d", err);
+        ESP_LOGI(TAG, "esp_lcd_new_i80_bus Error: %d", err);
     }
-    // pclk_hz = 10 * 1000 * 1000 -> What Lilygo uses
+    
     esp_lcd_panel_io_i80_config_t io_config = {
         .cs_gpio_num = -1,
-        .pclk_hz = 5 * 1000 * 1000,
-        .trans_queue_depth = 4,
+        .pclk_hz = 10 * 1000 * 1000,
+        .trans_queue_depth = 10,
         .dc_levels = {
             .dc_idle_level = 0,
             .dc_cmd_level = 1,
@@ -116,21 +104,13 @@ void i2s_bus_init(i2s_bus_config *cfg)
         .user_ctx = NULL,
         .lcd_cmd_bits = 10,
         .lcd_param_bits = 0,
-        // .flags.reverse_color_bits = 1
     };
-    esp_lcd_new_panel_io_i80(i80_bus, &io_config, &io_handle);
+    ESP_ERROR_CHECK(esp_lcd_new_panel_io_i80(i80_bus, &io_config, &io_handle));
     ESP_LOGI(TAG, "8080 esp_lcd_new_panel_io_i80 done");
 }
-
 
 void i2s_deinit()
 {
     esp_intr_free(gI2S_intr_handle);
-
-    free(i2s_state.buf_a);
-    free(i2s_state.buf_b);
-    free((void *)i2s_state.dma_desc_a);
-    free((void *)i2s_state.dma_desc_b);
-
     periph_module_disable(PERIPH_I2S1_MODULE);
 }
