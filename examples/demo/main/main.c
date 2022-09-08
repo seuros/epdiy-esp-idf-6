@@ -243,7 +243,7 @@ void idf_setup() {
   heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
   heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
 
-  epd_init(EPD_LUT_1K);
+  epd_init(EPD_OPTIONS_DEFAULT);
   hl = epd_hl_init(WAVEFORM);
 
   // Default orientation is EPD_ROT_LANDSCAPE
