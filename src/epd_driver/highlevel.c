@@ -27,7 +27,7 @@ EpdiyHighlevelState epd_hl_init(const EpdWaveform* waveform) {
   assert(!already_initialized);
   assert(waveform != NULL);
 
-  #ifndef CONFIG_ESP32_SPIRAM_SUPPORT
+  #if defined(CONFIG_ESP32_SPIRAM_SUPPORT) == false && defined(CONFIG_ESP32S3_SPIRAM_SUPPORT) == false
     ESP_LOGW("EPDiy", "Please enable PSRAM for the ESP32 (menuconfig→ Component config→ ESP32-specific)");
   #endif
   EpdiyHighlevelState state;
