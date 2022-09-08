@@ -13,25 +13,10 @@ set(app_sources "epd_driver.c"
 				"highlevel.c"
                 "epd_temperature.c"
                 "board/epd_board_common.c"
-                "board/epd_board_lilygo_s3_47.c"
 )
-# Need to find how to add this when MCU is ESP32
+# Add this sources only when MCU is ESP32
 if (IDF_TARGET_ESP32) 
-set(app_sources "epd_driver.c"
-                "epd_board.c"
-                "render.c"
-                "display_ops.c"
-                "tps65185.c"
-                "pca9555.c"
-                "font.c"
-                "lut.c"
-                "board_specific.c"
-				"builtin_waveforms.c"
-                "i2s_data_bus_s3.c"
-                "rmt_pulse.c"
-				"highlevel.c"
-                "epd_temperature.c"
-                "board/epd_board_common.c"
+list(APPEND app_sources
                 "i2s_data_bus.c"
                 "board/epd_board_lilygo_t5_47.c"
                 "board/epd_board_v2_v3.c"
@@ -40,8 +25,8 @@ set(app_sources "epd_driver.c"
                 "board/epd_board_v6.c"
 )
 endif()
-# This does not work. Also not: if (IDF_TARGET_ESP32S3)
-if(IDF_TARGET=="esp32s3")
+# Add this sources only when MCU is ESP32S3
+if(CONFIG_IDF_TARGET_ESP32S3)
     list(APPEND app_sources "board/epd_board_lilygo_s3_47.c")
 endif()
 
