@@ -69,10 +69,9 @@ void IRAM_ATTR pulse_ckv_ticks(uint16_t high_time_ticks,
                                uint16_t low_time_ticks, bool wait) {
   #if CONFIG_IDF_TARGET_ESP32
     while (!rmt_tx_done) {};
-  #endif
-  volatile rmt_item32_t *rmt_mem_ptr =
+    volatile rmt_item32_t *rmt_mem_ptr =
       &(RMTMEM.chan[row_rmt_config.channel].data32[0]);
-  if (high_time_ticks > 0) {
+      if (high_time_ticks > 0) {
     rmt_mem_ptr->level0 = 1;
     rmt_mem_ptr->duration0 = high_time_ticks;
     rmt_mem_ptr->level1 = 0;
@@ -83,6 +82,25 @@ void IRAM_ATTR pulse_ckv_ticks(uint16_t high_time_ticks,
     rmt_mem_ptr->level1 = 0;
     rmt_mem_ptr->duration1 = 0;
   }
+    #elif CONFIG_IDF_TARGET_ESP32S3
+    rmt_item32_t rmt_mem_ptr;
+    if (high_time_ticks > 0)
+    {
+        rmt_mem_ptr.level0 = 1;
+        rmt_mem_ptr.duration0 = high_time_ticks;
+        rmt_mem_ptr.level1 = 0;
+        rmt_mem_ptr.duration1 = low_time_ticks;
+    }
+    else
+    {
+        rmt_mem_ptr.level0 = 1;
+        rmt_mem_ptr.duration0 = low_time_ticks;
+        rmt_mem_ptr.level1 = 0;
+        rmt_mem_ptr.duration1 = 0;
+    }
+  #endif
+  
+  
   #if CONFIG_IDF_TARGET_ESP32
     RMTMEM.chan[row_rmt_config.channel].data32[1].val = 0;
     rmt_tx_done = false;
