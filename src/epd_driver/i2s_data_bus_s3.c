@@ -80,7 +80,7 @@ void i2s_bus_init(i2s_bus_config *cfg)
     esp_lcd_i80_bus_handle_t i80_bus = NULL;
     esp_lcd_i80_bus_config_t bus_config = {
         // Withouth clk_src parameter in V5 it just hangs on esp_lcd_new_i80_bus instantiation
-        .clk_src = LCD_CLK_SRC_PLL160M,
+        .clk_src = LCD_CLK_SRC_DEFAULT,
         .dc_gpio_num = cfg->start_pulse,
         .wr_gpio_num = cfg->clock,
         .data_gpio_nums = {
