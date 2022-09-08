@@ -27,7 +27,8 @@ set(app_sources "epd_driver.c"
 # "board/epd_board_v6.c"
 # And others only when MCU is ESP32S3
 idf_component_register(SRCS ${app_sources} INCLUDE_DIRS "include" 
-        REQUIRES esp_adc esp_timer driver esp_lcd
+        REQUIRES esp_adc esp_timer driver 
+        PRIV_REQUIRES esp_lcd
         )
 
 set_source_files_properties("lut.c" PROPERTIES COMPILE_OPTIONS -mno-fix-esp32-psram-cache-issue)

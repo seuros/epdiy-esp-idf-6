@@ -75,9 +75,11 @@ void epd_deinit() {
 }
 
 void epd_start_frame() {
-  while (i2s_is_busy() || rmt_busy()) {
-  };
-
+  #if CONFIG_IDF_TARGET_ESP32
+  while (i2s_is_busy() || rmt_busy()) {};
+  #elif CONFIG_IDF_TARGET_ESP32S3
+  while (i2s_is_busy()) ;
+  #endif
   epd_ctrl_state_t mask = NoChangeState;
 
   ctrl_state.ep_mode = true;
@@ -120,8 +122,11 @@ void IRAM_ATTR epd_skip() {
 }
 
 void IRAM_ATTR epd_output_row(uint32_t output_time_dus) {
-  while (i2s_is_busy() || rmt_busy()) {
-  };
+  #if CONFIG_IDF_TARGET_ESP32
+  while (i2s_is_busy() || rmt_busy()) {};
+  #elif CONFIG_IDF_TARGET_ESP32S3
+  while (i2s_is_busy()) ;
+  #endif
 
   epd_ctrl_state_t mask = NoChangeState;
   ctrl_state.ep_sth = true;
