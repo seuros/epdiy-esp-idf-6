@@ -13,11 +13,8 @@
 #include "esp_log.h"
 // error: 'PIN_FUNC_GPIO' undeclared
 #include <gpio_periph.c>
-/******************************************************************************/
-/***        macro definitions                                               ***/
-/******************************************************************************/
-
-#define USER_I2S_REG 0
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 /******************************************************************************/
 /***        type definitions                                                ***/
@@ -112,6 +109,7 @@ void IRAM_ATTR i2s_switch_buffer()
 {
 }
 
+// TODO EPD_WIDTH should be dynamic
 void IRAM_ATTR i2s_start_line_output()
 {
     output_done = false;
@@ -121,7 +119,6 @@ void IRAM_ATTR i2s_start_line_output()
 
 static bool notify_trans_done(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata, void *user_ctx)
 {
-    // gpio_set_level(start_pulse_pin, 1);
     output_done = true;
     return output_done;
 }
@@ -129,9 +126,14 @@ static bool notify_trans_done(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_
 
 void i2s_bus_init(i2s_bus_config *cfg)
 {
-    //ESP_LOGI(TAG, "Initialize Intel 8080 bus\n6:%d 7:%d 4:%d 5:%d 2:%d 3:%d 0:%d 1:%d",cfg->data_6,cfg->data_7,cfg->data_4,cfg->data_5,cfg->data_2,cfg->data_3,cfg->data_0,cfg->data_1);
+    ESP_LOGI(TAG, "Initialize Intel 8080 bus\n6:%d 7:%d 4:%d 5:%d 2:%d 3:%d 0:%d 1:%d\nstart_pulse:%d clock:%d\nepd_row_width:%d",
+    cfg->data_6,cfg->data_7,cfg->data_4,cfg->data_5,cfg->data_2,cfg->data_3,cfg->data_0,
+    cfg->data_1, cfg->start_pulse, cfg->clock, cfg->epd_row_width);
+
     esp_lcd_i80_bus_handle_t i80_bus = NULL;
     esp_lcd_i80_bus_config_t bus_config = {
+        // Withouth clk_src parameter in V5 it just hangs on esp_lcd_new_i80_bus instantiation
+        .clk_src = LCD_CLK_SRC_DEFAULT,
         .dc_gpio_num = cfg->start_pulse,
         .wr_gpio_num = cfg->clock,
         .data_gpio_nums = {
@@ -147,12 +149,12 @@ void i2s_bus_init(i2s_bus_config *cfg)
         .bus_width = 8,
         .max_transfer_bytes = (cfg->epd_row_width + 32)/4
     };
-    ESP_LOGI(TAG, "8080 BEF esp_lcd_new_i80_bus");
-    // Here it hangs my friend:
-    ESP_ERROR_CHECK(esp_lcd_new_i80_bus(&bus_config, &i80_bus));
+    
+    esp_err_t err = esp_lcd_new_i80_bus(&bus_config, &i80_bus);
+    if (err) {
+        ESP_LOGI(TAG, "ERROR: %d", err);
+    }
 
-    // This line is not printed:
-    ESP_LOGI(TAG, "8080 AFT esp_lcd_new_i80_bus done");
     esp_lcd_panel_io_i80_config_t io_config = {
         .cs_gpio_num = -1,
         .pclk_hz = 10 * 1000 * 1000,
@@ -169,7 +171,7 @@ void i2s_bus_init(i2s_bus_config *cfg)
         .lcd_param_bits = 0,
         // .flags.reverse_color_bits = 1
     };
-    ESP_ERROR_CHECK(esp_lcd_new_panel_io_i80(i80_bus, &io_config, &io_handle));
+    esp_lcd_new_panel_io_i80(i80_bus, &io_config, &io_handle);
     ESP_LOGI(TAG, "8080 esp_lcd_new_panel_io_i80 done");
 }
 

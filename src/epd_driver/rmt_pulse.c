@@ -11,7 +11,7 @@ static intr_handle_t gRMT_intr_handle = NULL;
 static rmt_config_t row_rmt_config;
 
 // keep track of wether the current pulse is ongoing
-volatile bool rmt_tx_done = true;
+static volatile bool rmt_tx_done = true;
 
 /**
  * Remote peripheral interrupt. Used to signal when transmission is done.

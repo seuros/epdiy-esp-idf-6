@@ -34,6 +34,10 @@ typedef struct {
   bool pos_power_enable : 1;
   bool neg_power_enable : 1;
   bool ep_scan_direction : 1;
+  bool ep_latch_enable : 1;
+  bool ep_stv : 1;
+  bool ep_mode : 1;
+  bool ep_output_enable : 1;
 } epd_config_register_t;
 
 static i2s_bus_config i2s_config = {
@@ -47,31 +51,68 @@ static i2s_bus_config i2s_config = {
   .data_5 = D5,
   .data_6 = D6,
   .data_7 = D7,
-  .epd_row_width = 960
+  // add an offset off dummy bytes to allow for enough timing headroom
+  .epd_row_width = 960+ 32
 };
 
 static void IRAM_ATTR push_cfg_bit(bool bit) {
-  gpio_set_level(CFG_CLK, 0);
-  gpio_set_level(CFG_DATA, bit);
-  gpio_set_level(CFG_CLK, 1);
+    fast_gpio_set_lo(CFG_CLK);
+    if (bit)
+    {
+        fast_gpio_set_hi(CFG_DATA);
+    }
+    else
+    {
+        fast_gpio_set_lo(CFG_DATA);
+    }
+    fast_gpio_set_hi(CFG_CLK);
+}
+
+static void IRAM_ATTR push_cfg(epd_config_register_t *cfg)
+{
+    fast_gpio_set_lo(CFG_STR);
+
+    // push config bits in reverse order
+    push_cfg_bit(cfg->ep_output_enable);
+    push_cfg_bit(cfg->ep_mode);
+    push_cfg_bit(cfg->ep_scan_direction);
+    push_cfg_bit(cfg->ep_stv);
+
+    push_cfg_bit(cfg->neg_power_enable);
+    push_cfg_bit(cfg->pos_power_enable);
+    push_cfg_bit(cfg->power_disable);
+    push_cfg_bit(cfg->ep_latch_enable);
+
+    fast_gpio_set_hi(CFG_STR);
 }
 
 static epd_config_register_t config_reg;
 
 static void epd_board_init(uint32_t epd_row_width) {
+  gpio_reset_pin(CFG_DATA);
+  gpio_reset_pin(CFG_CLK);
+  gpio_reset_pin(CFG_STR);
+  gpio_set_direction(CFG_DATA, GPIO_MODE_OUTPUT);
+  gpio_set_direction(CFG_CLK, GPIO_MODE_OUTPUT);
+  gpio_set_direction(CFG_STR, GPIO_MODE_OUTPUT);
+  
   /* Power Control Output/Off */
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_DATA], PIN_FUNC_GPIO);
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_CLK], PIN_FUNC_GPIO);
   PIN_FUNC_SELECT(GPIO_PIN_MUX_REG[CFG_STR], PIN_FUNC_GPIO);
-  gpio_set_direction(CFG_DATA, GPIO_MODE_OUTPUT);
-  gpio_set_direction(CFG_CLK, GPIO_MODE_OUTPUT);
-  gpio_set_direction(CFG_STR, GPIO_MODE_OUTPUT);
+ 
+  
   fast_gpio_set_lo(CFG_STR);
 
+  config_reg.ep_latch_enable = false;
   config_reg.power_disable = true;
   config_reg.pos_power_enable = false;
   config_reg.neg_power_enable = false;
+  config_reg.ep_stv = true;
   config_reg.ep_scan_direction = true;
+  config_reg.ep_mode = false;
+  config_reg.ep_output_enable = false;
+  push_cfg(&config_reg);
 
   // i2s_data_bus_s3
   i2s_bus_init( &i2s_config );
@@ -106,58 +147,33 @@ static void epd_board_set_ctrl(epd_ctrl_state_t *state, const epd_ctrl_state_t *
 
 static void epd_board_poweron(epd_ctrl_state_t *state) {
   //i2s_gpio_attach(&i2s_config);
-
-  // This was re-purposed as power enable.
-  config_reg.ep_scan_direction = true;
-
-  // POWERON
-  epd_ctrl_state_t mask = {  // Trigger output to shift register
-    .ep_stv = true,
-  };
-  config_reg.power_disable = false;
-  epd_board_set_ctrl(state, &mask);
-  busy_delay(100 * 240);
-  config_reg.neg_power_enable = true;
-  epd_board_set_ctrl(state, &mask);
-  busy_delay(500 * 240);
-  config_reg.pos_power_enable = true;
-  epd_board_set_ctrl(state, &mask);
-  busy_delay(100 * 240);
-  state->ep_stv = true;
-  state->ep_sth = true;
-  mask.ep_sth = true;
-  epd_board_set_ctrl(state, &mask);
-  // END POWERON
+    config_reg.ep_scan_direction = true;
+    config_reg.power_disable = false;
+    push_cfg(&config_reg);
+    busy_delay(100 * 240);
+    config_reg.neg_power_enable = true;
+    push_cfg(&config_reg);
+    busy_delay(500 * 240);
+    config_reg.pos_power_enable = true;
+    push_cfg(&config_reg);
+    busy_delay(100 * 240);
+    config_reg.ep_stv = true;
+    push_cfg(&config_reg);
+    fast_gpio_set_hi(STH);
 }
 
 void epd_powerdown_lilygo_t5_47() {
-  epd_ctrl_state_t *state = epd_ctrl_state();
+    config_reg.pos_power_enable = false;
+    push_cfg(&config_reg);
+    busy_delay(10 * 240);
+    config_reg.neg_power_enable = false;
+    push_cfg(&config_reg);
+    busy_delay(100 * 240);
+    config_reg.power_disable = true;
+    push_cfg(&config_reg);
 
-  // This was re-purposed as power enable however it also disables the touch.
-  // this workaround may still leave power on to epd and as such may cause other
-  // problems such as grey screen.
-  epd_ctrl_state_t mask = {  // Trigger output to shift register
-    .ep_stv = true,
-  };
-  config_reg.pos_power_enable = false;
-  epd_board_set_ctrl(state, &mask);
-  busy_delay(10 * 240);
-
-  config_reg.neg_power_enable = false;
-  config_reg.pos_power_enable = false;
-  epd_board_set_ctrl(state, &mask);
-  busy_delay(100 * 240);
-
-  state->ep_stv = false;
-  mask.ep_stv = true;
-  state->ep_output_enable = false;
-  mask.ep_output_enable = true;
-  state->ep_mode = false;
-  mask.ep_mode = true;
-  config_reg.power_disable = true;
-  epd_board_set_ctrl(state, &mask);
-
-  //i2s_gpio_detach(&i2s_config);
+    config_reg.ep_stv = false;
+    push_cfg(&config_reg);
 }
 
 static void epd_board_poweroff_common(epd_ctrl_state_t *state) {
