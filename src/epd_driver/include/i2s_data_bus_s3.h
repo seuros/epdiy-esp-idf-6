@@ -2,16 +2,11 @@
  * Implements a 8bit parallel interface to transmit pixel
  * data to the display, based on the I2S peripheral.
  */
-#ifdef __cplusplus
-extern "C" {
-
-#endif
 #pragma once
 
 #include <driver/gpio.h>
 #include <esp_attr.h>
 #include <stdint.h>
-#include <rom/gpio.h>
 
 /**
  * I2S bus configuration parameters.
@@ -71,7 +66,3 @@ bool IRAM_ATTR i2s_is_busy();
  * @brief Give up allocated resources.
  */
 void i2s_deinit();
-
-#ifdef __cplusplus
-}
-#endif

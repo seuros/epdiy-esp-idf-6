@@ -8,7 +8,6 @@ set(app_sources "epd_driver.c"
                 "lut.c"
                 "board_specific.c"
 				"builtin_waveforms.c"
-                "i2s_data_bus_s3.c"
                 "rmt_pulse.c"
 				"highlevel.c"
                 "epd_temperature.c"
@@ -27,7 +26,8 @@ list(APPEND app_sources
 endif()
 # Add this sources only when MCU is ESP32S3
 if(CONFIG_IDF_TARGET_ESP32S3)
-    list(APPEND app_sources "board/epd_board_lilygo_s3_47.c")
+    list(APPEND app_sources "i2s_data_bus_s3.c"
+                "board/epd_board_lilygo_s3_47.c")
 endif()
 
 if (IDF_VERSION_MAJOR GREATER_EQUAL 5)

@@ -1,5 +1,3 @@
-#if CONFIG_IDF_TARGET_ESP32
-
 #include "i2s_data_bus.h"
 #include "driver/rtc_io.h"
 #include "esp_system.h"
@@ -301,4 +299,3 @@ void i2s_deinit() {
 
   periph_module_disable(PERIPH_I2S1_MODULE);
 }
-#endif

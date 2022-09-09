@@ -1,17 +1,9 @@
 #include "i2s_data_bus_s3.h"
 
 #include <driver/periph_ctrl.h>
-#include <esp_heap_caps.h>
-#include <rom/lldesc.h>
-#include <soc/i2s_reg.h>
-#include <soc/i2s_struct.h>
-#include <soc/rtc.h>
 #include "esp_lcd_panel_io.h"
 #include "esp_err.h"
 #include "esp_log.h"
-#include <gpio_periph.c>  // Otherwise: 'PIN_FUNC_GPIO' undeclared
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "epd_internals.h" // EPD_WIDTH
 
 static const char *TAG = "I80";
