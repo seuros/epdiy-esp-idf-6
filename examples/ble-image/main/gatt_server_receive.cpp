@@ -32,6 +32,7 @@
 #include "esp_bt_defs.h"
 #include "esp_bt_main.h"
 #include "esp_gatt_common_api.h"
+#include "esp_wifi.h"
 // EPD Driver
 #include "epd_driver.h"
 #include "epd_highlevel.h"
@@ -68,7 +69,7 @@ uint64_t start_time = 0;
 uint32_t received_length = 0;
 
 // Draws a progress bar when downloading (Just a demo: is faster without it)
-// And also writes in the same framebuffer as the image
+// DO NOT use for Lilygo S3 since makes consumption spikes that will reset your device
 #define DOWNLOAD_PROGRESS_BAR true
 uint8_t progressBarHeight = 4;
 
@@ -215,7 +216,16 @@ extern "C"
     void app_main();
 }
 
-
+/**
+ * @brief Do not poweroff device for Lilygo S3 since turning it on generates up to 600 mA spikes when is done
+ *        at the same time than BLE (Weird!)
+ *        That means you cannot turn on -> draw something fast -> turn off or you will have a Reset
+ */
+void epaper_power_off() {
+    #ifndef CONFIG_EPD_BOARD_REVISION_LILYGO_S3_47
+      epd_poweroff();
+    #endif
+}
 
 void progressBar(long processed, long total)
 {
@@ -543,47 +553,13 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
             /* if (received_events<3) {
                 esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
             } */
+            #if DOWNLOAD_PROGRESS_BAR
             if (received_events%20 == 0) {
                 epd_poweron();
                 progressBar(img_buf_pos, received_length);
-                epd_poweroff();
+                epaper_power_off();
             }
-
-            if (gl_profile_tab[PROFILE_A_APP_ID].descr_handle == param->write.handle && param->write.len == 2){
-                uint16_t descr_value = param->write.value[1]<<8 | param->write.value[0];
-                if (descr_value == 0x0001){
-                    if (a_property & ESP_GATT_CHAR_PROP_BIT_NOTIFY){
-                        ESP_LOGI(GATTS_TAG, "notify enable");
-                        uint8_t notify_data[15];
-                        for (int i = 0; i < sizeof(notify_data); ++i)
-                        {
-                            notify_data[i] = i%0xff;
-                        }
-                        //the size of notify_data[] need less than MTU size
-                        esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_A_APP_ID].char_handle,
-                                                sizeof(notify_data), notify_data, false);
-                    }
-                }else if (descr_value == 0x0002){
-                    if (a_property & ESP_GATT_CHAR_PROP_BIT_INDICATE){
-                        ESP_LOGI(GATTS_TAG, "indicate enable");
-                        uint8_t indicate_data[15];
-                        for (int i = 0; i < sizeof(indicate_data); ++i)
-                        {
-                            indicate_data[i] = i%0xff;
-                        }
-                        //the size of indicate_data[] need less than MTU size
-                        esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, gl_profile_tab[PROFILE_A_APP_ID].char_handle,
-                                                sizeof(indicate_data), indicate_data, true);
-                    }
-                }
-                else if (descr_value == 0x0000){
-                    ESP_LOGI(GATTS_TAG, "notify/indicate disable ");
-                }else{
-                    ESP_LOGE(GATTS_TAG, "unknown descr value");
-                    esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
-                }
-
-            }
+            #endif
         }
         example_write_event_env(gatts_if, &a_prepare_write_env, param);
         break;
@@ -666,7 +642,7 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
     case ESP_GATTS_CONNECT_EVT: {
         epd_poweron();
         epd_fullclear(&hl, temperature);
-        epd_poweroff();
+        epaper_power_off();
         esp_ble_conn_update_params_t conn_params = {0};
         memcpy(conn_params.bda, param->connect.remote_bda, sizeof(esp_bd_addr_t));
         /* For the IOS system, please reference the apple official documents about the ble connection parameters restrictions. */
@@ -746,11 +722,14 @@ void write_text(EpdFontProperties font_prop, int x, int y, char* text) {
     epd_clear_area(area);
     epd_write_string(&FONT, text, &x, &y, fb, &font_props);
     epd_hl_update_area(&hl, MODE_DU, temperature, area);
-    epd_poweroff();
+    epaper_power_off();
 }
 
 void app_main(void)
 {
+    // Maximum power saving (But slower WiFi which we use only to callibrate RTC)
+    esp_wifi_set_ps(WIFI_PS_MAX_MODEM);
+
     double gammaCorrection = 1.0 / gamma_value;
     for (int gray_value =0; gray_value<256;gray_value++) {
         gamme_curve[gray_value]= round (255*pow(gray_value/255.0, gammaCorrection));
@@ -759,27 +738,27 @@ void app_main(void)
     hl = epd_hl_init(EPD_BUILTIN_WAVEFORM);
     fb = epd_hl_get_framebuffer(&hl);
     
-    dither_space = (uint8_t *)heap_caps_malloc(EPD_WIDTH *16, MALLOC_CAP_SPIRAM);
+    dither_space = (uint8_t *)heap_caps_malloc(EPD_WIDTH *16, MALLOC_CAP_SPIRAM); // or MALLOC_CAP_DEFAULT
     if (dither_space == NULL) {
         ESP_LOGE("main", "Initial alloc ditherSpace failed!");
     }
 
-    // Should be big enough to allocate the JPEG file size, width * height should suffice
-    source_buf = (uint8_t *)heap_caps_malloc(EPD_WIDTH * EPD_HEIGHT, MALLOC_CAP_SPIRAM);
+    // Should be big enough to allocate the JPEG file size, width * height should suffice alloc in external RAM: MALLOC_CAP_SPIRAM
+    source_buf = (uint8_t *)heap_caps_malloc(200000, MALLOC_CAP_SPIRAM);
     if (source_buf == NULL) {
         ESP_LOGE("main", "Initial alloc source_buf failed!");
     }
 
     font_props = epd_font_properties_default();
-    font_props.bg_color = 255;
+    //font_props.bg_color = 255; //warning: conversion from 'uint8_t' to 'unsigned char:4'
     font_props.fg_color = 0;
     font_props.flags = EPD_DRAW_ALIGN_LEFT;
     int cursor_x = 10;
     int cursor_y = epd_rotated_display_height() - 30;
     
-    write_text(font_props, cursor_x, cursor_y, "BLE initialized");
+    write_text(font_props, cursor_x, cursor_y, (char*) "BLE initialized");
     cursor_y-= 40;
-    write_text(font_props, cursor_x, cursor_y, "Use Chrome only. Recommended: cale.es");
+    write_text(font_props, cursor_x, cursor_y, (char*) "Use Chrome only. Recommended: cale.es");
     
     esp_err_t ret;
 
