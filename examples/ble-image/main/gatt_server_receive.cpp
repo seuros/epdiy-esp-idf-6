@@ -59,7 +59,7 @@ uint8_t *source_buf;      // JPG receive buffer
 uint32_t img_buf_pos = 0;
 uint8_t gamme_curve[256]; // Internal array for gamma grayscale
 // Nice test values: 0.9 1.2 1.4 higher and is too bright
-double gamma_value = 1.4;
+double gamma_value = 1.0;
 // Timers
 #include "esp_timer.h"
 uint32_t time_decomp = 0;
@@ -217,14 +217,13 @@ extern "C"
 }
 
 /**
- * @brief Do not poweroff device for Lilygo S3 since turning it on generates up to 600 mA spikes when is done
- *        at the same time than BLE (Weird!)
+ * @brief Fixed by liangyingy (Lilygo)
  *        That means you cannot turn on -> draw something fast -> turn off or you will have a Reset
  */
 void epaper_power_off() {
-    #ifndef CONFIG_EPD_BOARD_REVISION_LILYGO_S3_47
+    //#ifndef CONFIG_EPD_BOARD_REVISION_LILYGO_S3_47
       epd_poweroff();
-    #endif
+    //#endif
 }
 
 void progressBar(long processed, long total)
@@ -518,7 +517,7 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
                 (param->write.value[2] << 8) +
                 (param->write.value[3] << 16) +
                 (param->write.value[4] << 24);
-                ESP_LOGI(GATTS_TAG, "0x01 content-lenght received:%d", received_length);
+                ESP_LOGI(GATTS_TAG, "0x01 content-length received:%d", received_length);
 
                 esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
             }
@@ -557,7 +556,7 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
             if (received_events%20 == 0) {
                 epd_poweron();
                 progressBar(img_buf_pos, received_length);
-                epaper_power_off();
+                epd_poweroff();
             }
             #endif
         }
@@ -642,7 +641,7 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
     case ESP_GATTS_CONNECT_EVT: {
         epd_poweron();
         epd_fullclear(&hl, temperature);
-        epaper_power_off();
+        epd_poweroff();
         esp_ble_conn_update_params_t conn_params = {0};
         memcpy(conn_params.bda, param->connect.remote_bda, sizeof(esp_bd_addr_t));
         /* For the IOS system, please reference the apple official documents about the ble connection parameters restrictions. */
@@ -722,7 +721,7 @@ void write_text(EpdFontProperties font_prop, int x, int y, char* text) {
     epd_clear_area(area);
     epd_write_string(&FONT, text, &x, &y, fb, &font_props);
     epd_hl_update_area(&hl, MODE_DU, temperature, area);
-    epaper_power_off();
+    epd_poweroff();
 }
 
 void app_main(void)

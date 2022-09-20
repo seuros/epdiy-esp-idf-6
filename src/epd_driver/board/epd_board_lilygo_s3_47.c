@@ -28,11 +28,11 @@
 #define CKH GPIO_NUM_41
 
 typedef struct {
+  bool ep_latch_enable : 1;
   bool power_disable : 1;
   bool pos_power_enable : 1;
   bool neg_power_enable : 1;
   bool ep_scan_direction : 1;
-  bool ep_latch_enable : 1;
   bool ep_stv : 1;
   bool ep_mode : 1;
   bool ep_output_enable : 1;
@@ -160,50 +160,22 @@ static void epd_board_poweron(epd_ctrl_state_t *state) {
     fast_gpio_set_hi(STH);
 }
 
-void epd_powerdown_lilygo_t5_47() {
-    config_reg.pos_power_enable = false;
-    push_cfg(&config_reg);
-    busy_delay(10 * 240);
-    config_reg.neg_power_enable = false;
-    push_cfg(&config_reg);
-    busy_delay(100 * 240);
-    config_reg.power_disable = true;
-    push_cfg(&config_reg);
-
-    config_reg.ep_stv = false;
-    push_cfg(&config_reg);
-}
-
 static void epd_board_poweroff_common(epd_ctrl_state_t *state) {
-  // POWEROFF
-  epd_ctrl_state_t mask = {  // Trigger output to shift register
-    .ep_stv = true,
-  };
   config_reg.pos_power_enable = false;
-  epd_board_set_ctrl(state, &mask);
+  push_cfg(&config_reg);
   busy_delay(10 * 240);
-
   config_reg.neg_power_enable = false;
-  config_reg.pos_power_enable = false;
-  epd_board_set_ctrl(state, &mask);
+  push_cfg(&config_reg);
   busy_delay(100 * 240);
-
-  state->ep_stv = false;
-  mask.ep_stv = true;
-  state->ep_output_enable = false;
-  mask.ep_output_enable = true;
-  state->ep_mode = false;
-  mask.ep_mode = true;
   config_reg.power_disable = true;
-  epd_board_set_ctrl(state, &mask);
+  push_cfg(&config_reg);
 
+  config_reg.ep_stv = false;
+  push_cfg(&config_reg);
   //i2s_gpio_detach(&i2s_config);
-  // END POWEROFF
 }
 
 static void epd_board_poweroff(epd_ctrl_state_t *state) {
-  // This was re-purposed as power enable.
-  config_reg.ep_scan_direction = false;
   epd_board_poweroff_common(state);
 }
 
