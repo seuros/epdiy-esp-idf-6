@@ -8,8 +8,9 @@
     (title "epdiy")
     (date "2022-12-03")
     (rev "v7.0~dev")
+    (comment 2 "Custom modified for 13.3\" FPC connector (J8) by Fasani Corporation")
     (comment 3 "License: CC-BY-SA-4.0")
-    (comment 4 "Author: Valentin Roland")
+    (comment 4 "Author: Valentin Roland Collaboration/Testing: Martin Fasani")
   )
 
   (lib_symbols
