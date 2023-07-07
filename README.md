@@ -1,14 +1,4 @@
-[![Documentation Status](https://readthedocs.org/projects/epdiy/badge/?version=latest)](https://epdiy.readthedocs.io/en/latest/?badge=latest) [![Matrix](https://img.shields.io/matrix/epdiy-general:matrix.vroland.de?label=Matrix%20Chat)](https://matrix.to/#/!GUXWriqsBKkWyXzsBK:matrix.vroland.de?via=matrix.vroland.de) [![JoinSlack](https://img.shields.io/badge/Join%20us-on%20Slack-blueviolet.svg)](https://join.slack.com/t/epdiy/shared_invite/zt-q4eld5mq-uP_k9IDCFjFx0bDk396WxQ)
-
-EPDiy component only
-=======================================
-
-This repository was originally a fork from EPDiy to contribute with "Software rotation". This is already merged in EPDiy so I decided to keep this fork and make something useful with it. On develop branch is my original update to add rotation and in **master** branch I left a minimal version that can be used as a component submodule in your projects.
-I cannot guarantee that it will be up-to-date with EPDiy but I will check every month if there is an important update and add it. If not please send me an email to the address that you can find in my [Github profile](https://github.com/martinberlin).
-
-**Related works**
-
-At the moment I'm working on a [LVGL fork to add epaper drivers](https://github.com/martinberlin/lv_port_esp32-epaper) to the Light and versatile graphics library. First target is the [Lilygo EPD47](https://github.com/Xinyuan-LilyGO/LilyGo-EPD47) parallel epaper that is supported by EPDiy library. 
+[![Documentation Status](https://readthedocs.org/projects/epdiy/badge/?version=latest)](https://epdiy.readthedocs.io/en/latest/?badge=latest) [![Matrix](https://img.shields.io/matrix/epdiy-general:matrix.vroland.de?label=Matrix%20Chat)](https://matrix.to/#/!GUXWriqsBKkWyXzsBK:matrix.vroland.de?via=matrix.vroland.de) [![JoinSlack](https://img.shields.io/badge/Join%20us-on%20Slack-blueviolet.svg)](https://join.slack.com/t/epdiy/shared_invite/zt-189eo7328-bs94cfB~eXPbLYAD1rKQcg)
 
 EPDiy E-Paper Driver
 =======================================
@@ -32,22 +22,19 @@ Building It
 
 If you want to build a board right now, there are two possible routes:
 
- - Use the new v5 PCB (`hardware/epaper-breakout/gerbers_v5.zip`). 
-   **So far, I only tested a prototype of it. The newest gerbers should work, but are untested!**
+ - Use the new v6 PCB (`hardware/epaper-breakout/gerbers_v6.zip`). 
+   **So far, I only tested a prototype of it. The gerbers only contain fixes for powering from battery, but have not yet been ordered with.**
    **If you have tested them, please let me know!**
    The BOM is available at (`hardware/epaper-breakout/BOM.csv`).
    Positioning files for SMT assembly are available at (`hardware/epaper-breakout/gerbers/epaper-breakout-top-pos.csv`). 
    Please double check the part positioning and Rotation with your assembly service!
    More information on the order process and where to find parts is in the [documentation](https://epdiy.readthedocs.io/en/latest/getting_started.html#getting-your-board).
  
+   Make sure to select the `V6` board revision in `idf.py menuconfig` when building the examples.
+ 
+ - Use the old v5 PCB (`hardware/epaper-breakout/gerbers_v5.zip`).  
+   This is the last board using the LT1945 booster.
    Make sure to select the `V5` board revision in `idf.py menuconfig` when building the examples.
- 
- - Use the old v4 PCB (`hardware/epaper-breakout/gerbers_v4.zip`). This is a bit more fresh, but should work.
-   The BOM is available at (`hardware/epaper-breakout/BOM.csv`).
-   Positioning files for SMT assembly are available at (`hardware/epaper-breakout/gerbers/epaper-breakout-top-pos.csv`). 
-   Please double check the part positioning and Rotation with your assembly service!
- 
-   Make sure to select the `V4` board revision in `idf.py menuconfig` when building the examples.
 
 Gettings Started
 ----------------
@@ -58,8 +45,7 @@ Join the Discussion
 ----------------
 
  - [![Matrix](https://img.shields.io/matrix/epdiy-general:matrix.vroland.de?label=Join%20Matrix)](https://matrix.to/#/!GUXWriqsBKkWyXzsBK:matrix.vroland.de?via=matrix.vroland.de) Matrix Community: +epdiy:matrix.vroland.de
- - [![JoinSlack](https://img.shields.io/badge/Join%20us-on%20Slack-blueviolet.svg)](https://join.slack.com/t/epdiy/shared_invite/zt-q4eld5mq-uP_k9IDCFjFx0bDk396WxQ)
-
+ - Slack: See badge
 Displays
 --------
 
@@ -70,6 +56,9 @@ Displays
 |ED097TC2|9.7"|1200 x 825|yes, tested|XF2M-3315-1A|33|V2|Slightly higher price, better contrast
 |ED097OC1|9.7"|1200 x 825|yes (should work)|XF2M-3315-1A|33|V2|Cheap, inferior performance
 |ED047TC1|4.7"|960 x 540|yes, tested|40-pin|40|LILYGO 4.7" EPD|Supported only by 4.7" e-paper board by LILYGO
+|ED052TC2|5.2"|960 x 540|yes, tested|40-pin|40|LILYGO 4.7" EPD|Supported only by 4.7" e-paper board by LILYGO
+| ED050SC5 | 5" | 600 x 800 | yes, tested       | THD0510-33CL-GF | 33 | v5 | 
+| ED050SC3 | 5" | 600 x 800 | yes (should work)       | THD0510-33CL-GF | 33 | v5 | 
 |ED133UT2|13.3"|1600 x 1200|yes, tested|adapter board|39|V2|Adapter Board required, also PENG133D
 |ED060XC3|6"|758 x 1024|yes, tested|THD0515-34CL-SN|34|V5|Cheapest, good contrast and resolution
 |ED060XD4|6"|758 x 1024|yes, tested|THD0515-34CL-SN|34|V5|
@@ -82,13 +71,12 @@ Displays
 |ED060SCF|6"|600 x 800|yes, tested|THD0515-34CL-SN|34|V5|Different flex cable shape
 |ED060SCN|6"|600 x 800|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|Different flex cable shape
 |ED060SCP|6"|600 x 800|yes (should work as ED060XC3)|THD0515-34CL-SN|34|V5|Different flex cable shape
-|ED060SC7|6"|600 x 800|yes (should work) |AXT434124|34|v5|
-|ED060SCG|6"|600 x 800|yes (should work) |AXT434124|34|v5|
-| ED060SCE | 6" | 600 x 800 | yes (should work)  | AXT434124 | 34 | v5 |
-| ED060SCM | 6" | 600 x 800 | yes (should work)  | AXT434124 | 34 | v5 |
-| ED060SCT | 6" | 600 x 800 | yes, tested        | AXT434124 | 34 | v5 |
+| ED060SC7 | 6" | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 |connector dropped in v6
+| ED060SCG | 6" | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 |connector dropped in v6
+| ED060SCE | 6" | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 |connector dropped in v6
+| ED060SCM | 6" | 600 x 800 | yes (should work) | AXT334124 | 34 | v5 |connector dropped in v6
+| ED060SCT | 6" | 600 x 800 | yes, tested       | AXT334124 | 34 | v5 |connector dropped in v6
 
-**Please note that board revision v5 is still in prototype stage!**
 
 Troubleshooting
 ---------------
@@ -98,7 +86,25 @@ The following list is compiled from past experiences and GitHub issues:
  * **The existing image fades / darkens when updating a partial screen region.** Make sure the VCOM voltage is [calibrated](https://epdiy.readthedocs.io/en/latest/getting_started.html#calibrate-vcom) for your specific display.
  * **The second third of the image is replaced with the last third.** This seems to be a timing issue we could not yet quite figure out the reason for. For a workarround or suggestions please [join the discussion](https://github.com/vroland/epdiy/issues/15).
  * **The ESP does not boot correctly when external periperals are connected.** Make sure not to pull GPIO12 high during boot, as it is a strapping pin internal voltage selection (https://github.com/vroland/epdiy/issues/17).
- 
+
+LilyGo Boards
+---------------
+There are several differences with these boards.
+One particular one is the way the LilyGo handles power to the display the official lilygo code has two states.
+This is now handled in epdiy in a different way to the lilygo code.
+**epd_poweroff()** completely turns the power off to the display and the other peripherals of the lilygo.
+The new function **epd_powerdown()** keeps the peripherals on (this allows the touch functions to continue to work). 
+**epd_poweroff() should allways be called before sleeping the system**
+You can still use touch to wake the screen with the following.
+In Arduino it works like this.
+`epd_poweroff();`
+
+ `epd_deinit();`
+
+ `esp_sleep_enable_ext1_wakeup(GPIO_SEL_13, ESP_EXT1_WAKEUP_ANY_HIGH);`
+
+ `esp_deep_sleep_start();`
+
 More on E-Paper Displays
 ------------------------
 
@@ -116,8 +122,7 @@ Hackaday Project
 For more details, see the project page on Hackaday: https://hackaday.io/project/168193-epdiy-976-e-paper-controller
 
 ![demo image](doc/source/img/demo.jpg)
-![board front](doc/source/img/board_p1.jpg)
-![board back](doc/source/img/board_p2.jpg)
+![board front](doc/source/img/v6.jpg)
 
 Licenses
 --------
@@ -126,6 +131,5 @@ The weather example is Copyright (c) David Bird 2018 (except for minor modificat
 
 The board and schematic are licensed under a <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/80x15.png" /></a> <a rel="license" href="https://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
 
-Firmware and remaining examples are licensed under the terms of the GNU GPL version 3.
+Firmware and remaining examples are licensed under the terms of the GNU Lesser GPL version 3.
 Utilities are licensed under the terms of the MIT license.
-
