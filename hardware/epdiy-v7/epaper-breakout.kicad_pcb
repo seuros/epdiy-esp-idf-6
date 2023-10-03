@@ -2107,10 +2107,10 @@
       (net 52 "VIN") (pinfunction "1") (pintype "passive") (tstamp 81fe164b-c710-4a5d-ac0a-ea1713bca95d))
     (pad "2" smd rect (at 1.9 0 90) (size 2.2 3.9) (layers "F.Cu" "F.Paste" "F.Mask")
       (net 33 "Net-(D4-A)") (pinfunction "2") (pintype "passive") (tstamp d74ad22e-0a89-429a-a6db-debeb3ca2d05))
-    (model "${KISYS3DMOD}/Inductor_SMD.3dshapes/L_Taiyo-Yuden_NR-40xx.wrl"
+    (model "${KIPRJMOD}/3dmodels/L-40xx.STEP"
       (offset (xyz 0 0 0))
       (scale (xyz 1 1 1))
-      (rotate (xyz 0 0 0))
+      (rotate (xyz -90 0 0))
     )
   )
 
@@ -2182,6 +2182,11 @@
       (offset (xyz 0 0 0))
       (scale (xyz 1 1 1))
       (rotate (xyz 0 0 0))
+    )
+    (model "${KIPRJMOD}/3dmodels/L-40xx.STEP"
+      (offset (xyz 0 0 0))
+      (scale (xyz 1 1 1))
+      (rotate (xyz -90 0 0))
     )
   )
 
