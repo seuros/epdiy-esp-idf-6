@@ -11,5 +11,5 @@
   (lib (name "TPS651851RSLR")(type "Legacy")(uri "${KIPRJMOD}/symbols/TPS651851RSLR.lib")(options "")(descr ""))
   (lib (name "espressif-kicad")(type "KiCad")(uri "${KIPRJMOD}/kicad-libraries/symbols/Espressif.kicad_sym")(options "")(descr ""))
   (lib (name "epdiy")(type "KiCad")(uri "${KIPRJMOD}/symbols/epdiy.kicad_sym")(options "")(descr ""))
-  (lib (name "Power")(type "KiCad")(uri "${KIPRJMOD}/symbols/DC-061-065A.kicad_sym")(options "")(descr ""))
+  (lib (name "microSD")(type "KiCad")(uri "${KIPRJMOD}/symbols/XKTF-005-SD.kicad_sym")(options "")(descr ""))
 )
