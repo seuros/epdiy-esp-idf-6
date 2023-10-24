@@ -1743,7 +1743,7 @@
     (property "Datasheet" "" (at 46.355 49.53 0)
       (effects (font (size 1.524 1.524)))
     )
-    (property "LCSC" "C231420" (at 46.355 49.53 0)
+    (property "LCSC" "C597986" (at 46.355 49.53 0)
       (effects (font (size 1.27 1.27)) hide)
     )
     (pin "1" (uuid 704fc8d2-ce48-4f6c-a8c0-80fe663545c7))

@@ -29,8 +29,7 @@
   )
 
   (setup
-    (pad_to_mask_clearance 0.051)
-    (solder_mask_min_width 0.25)
+    (pad_to_mask_clearance 0)
     (grid_origin 101.83 84.61)
     (pcbplotparams
       (layerselection 0x00010fc_ffffffff)
@@ -166,7 +165,7 @@
     (property "Sheetname" "")
     (property "ki_description" "ED060XC5 E-Paper screen")
     (path "/6e7541a9-18f1-459d-8b47-5df039b20ad7")
-    (attr smd allow_soldermask_bridges)
+    (attr smd)
     (fp_text reference "U1" (at -13.21 1.6) (layer "F.SilkS")
         (effects (font (size 1 1) (thickness 0.15)))
       (tstamp d714d5ca-3dc9-486d-b313-8114b7df1a8d)
@@ -295,7 +294,7 @@
     (property "ki_description" "ED097OC4 9.7\" epaper display")
     (property "ki_keywords" "epaper eink")
     (path "/37a24146-1b03-4f57-af8e-26ee72edeb82")
-    (attr smd allow_soldermask_bridges)
+    (attr smd)
     (fp_text reference "J1" (at 0 -1.125) (layer "F.SilkS")
         (effects (font (size 1.27 1.27) (thickness 0.254)))
       (tstamp 57ca213f-4207-49c3-a13d-26651a22b6f7)
