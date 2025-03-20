@@ -54,7 +54,6 @@ extern const EpdWaveform epdiy_ED097TC2;
 extern const EpdWaveform epdiy_ED060XC3;
 extern const EpdWaveform epdiy_ED060SCT;
 extern const EpdWaveform epdiy_ED133UT2;
-extern const EpdWaveform epdiy_NULL;
 
 /// Font data stored PER GLYPH
 typedef struct {

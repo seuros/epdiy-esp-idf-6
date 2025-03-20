@@ -190,10 +190,10 @@ void deepsleep() {
     esp_deep_sleep(1000000LL * 60 * DEEPSLEEP_MINUTES_AFTER_RENDER);
 }
 
-static unsigned int feed_buffer(
+static uint32_t feed_buffer(
     JDEC* jd,
-    unsigned char* buff,  // Pointer to the read buffer (NULL:skip)
-    unsigned int nd
+    uint8_t* buff,  // Pointer to the read buffer (NULL:skip)
+    uint32_t nd
 ) {
     uint32_t count = 0;
 
@@ -209,7 +209,7 @@ static unsigned int feed_buffer(
 }
 
 /* User defined call-back function to output decoded RGB bitmap in decoded_image buffer */
-static unsigned int tjd_output(
+static uint32_t tjd_output(
     JDEC* jd,     /* Decompressor object of current session */
     void* bitmap, /* Bitmap data to be output */
     JRECT* rect   /* Rectangular region to output */
@@ -367,14 +367,15 @@ static void http_post(void) {
      * either in URL or as host and path parameters.
      * FIX: Uncommenting cert_pem restarts even if providing the right certificate
      */
-    esp_http_client_config_t config = { .url = IMG_URL,
-                                        .event_handler = _http_event_handler,
-                                        .buffer_size = HTTP_RECEIVE_BUFFER_SIZE,
-                                        .disable_auto_redirect = false,
+    esp_http_client_config_t config
+        = {.url = IMG_URL,
+           .event_handler = _http_event_handler,
+           .buffer_size = HTTP_RECEIVE_BUFFER_SIZE,
+           .disable_auto_redirect = false,
 #if VALIDATE_SSL_CERTIFICATE == true
-                                        .cert_pem = (char*)server_cert_pem_start
+           .cert_pem = (char*)server_cert_pem_start
 #endif
-    };
+          };
     esp_http_client_handle_t client = esp_http_client_init(&config);
 
 #if DEBUG_VERBOSE

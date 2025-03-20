@@ -42,12 +42,6 @@ typedef struct {
      * Enable power to the display.
      */
     void (*poweron)(epd_ctrl_state_t*);
-
-    /**
-     * Measure VCOM kick-back. Only in v6 & v7 boards!
-     */
-    void (*measure_vcom)(epd_ctrl_state_t* state);
-
     /**
      * Disable power to the display.
      */
@@ -125,6 +119,7 @@ extern const EpdBoardDefinition epd_board_v4;
 extern const EpdBoardDefinition epd_board_v5;
 extern const EpdBoardDefinition epd_board_v6;
 extern const EpdBoardDefinition epd_board_v7;
+extern const EpdBoardDefinition epd_board_v7_raw;
 
 /**
  * Helper for short, precise delays.
