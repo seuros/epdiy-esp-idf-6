@@ -182,14 +182,12 @@ static void epd_board_set_ctrl(epd_ctrl_state_t* state, const epd_ctrl_state_t* 
 
         if (config_reg.pwrup && !gpio_get_level(CFG_PIN_PWRUP)) {
             gpio_set_level(CFG_PIN_PWRUP, 1);
-            printf("PWRUP ON\n");
         } else {
             gpio_set_level(CFG_PIN_PWRUP, 0);
         }
 
         if (config_reg.vcom_ctrl && !gpio_get_level(CFG_PIN_VCOM_CTRL)) {
             gpio_set_level(CFG_PIN_VCOM_CTRL, 1);
-            printf("VCOM_CTRL ON\n");
         } else {
             gpio_set_level(CFG_PIN_VCOM_CTRL, 0);
         }
