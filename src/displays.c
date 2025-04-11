@@ -67,8 +67,8 @@ const EpdDisplay_t ED078KC1 = {
     .width = 1872,
     .height = 1404,
     .bus_width = 16,
-    .bus_speed = 11,
-    .default_waveform = &epdiy_ED047TC2,
+    .bus_speed = 12,
+    .default_waveform = &epdiy_ED047TC1,
     .display_type = DISPLAY_TYPE_GENERIC,
 };
 
