@@ -25,12 +25,13 @@ void epd_board_temperature_init_v2() {
     ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, channel, &config));
 
     // ADC1 Calibration
-    adc_cali_line_fitting_config_t cali_config = {
+    adc_cali_curve_fitting_config_t cali_config = {
         .unit_id = ADC_UNIT_1,
+        .chan = channel,
         .atten = ADC_ATTEN_DB_6,
         .bitwidth = ADC_BITWIDTH_DEFAULT,
     };
-    ESP_ERROR_CHECK(adc_cali_create_scheme_line_fitting(&cali_config, &cali_handle));
+    ESP_ERROR_CHECK(adc_cali_create_scheme_curve_fitting(&cali_config, &cali_handle));
 }
 
 float epd_board_ambient_temperature_v2() {

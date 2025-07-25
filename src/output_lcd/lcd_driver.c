@@ -191,7 +191,7 @@ static void init_ckv_rmt() {
 
     rmt_ll_tx_enable_loop(&RMT, RMT_CKV_CHAN, true);
 
-    gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[lcd.config.bus.ckv], PIN_FUNC_GPIO);
+    gpio_ll_func_sel(GPIO_HAL_GET_HW(GPIO_PORT_0), lcd.config.bus.ckv, PIN_FUNC_GPIO);
     gpio_set_direction(lcd.config.bus.ckv, GPIO_MODE_OUTPUT);
     esp_rom_gpio_connect_out_signal(
         lcd.config.bus.ckv, rmt_periph_signals.groups[0].channels[RMT_CKV_CHAN].tx_sig, false, 0
@@ -323,17 +323,17 @@ static esp_err_t init_bus_gpio() {
 
     // connect peripheral signals via GPIO matrix
     for (size_t i = (16 - lcd.config.bus_width); i < 16; i++) {
-        gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[DATA_LINES[i]], PIN_FUNC_GPIO);
+        gpio_ll_func_sel(GPIO_HAL_GET_HW(GPIO_PORT_0), DATA_LINES[i], PIN_FUNC_GPIO);
         gpio_set_direction(DATA_LINES[i], GPIO_MODE_OUTPUT);
         esp_rom_gpio_connect_out_signal(
             DATA_LINES[i], LCD_PERIPH_SIGNALS.panels[0].data_sigs[i], false, false
         );
     }
-    gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[lcd.config.bus.leh], PIN_FUNC_GPIO);
+    gpio_ll_func_sel(GPIO_HAL_GET_HW(GPIO_PORT_0), lcd.config.bus.leh, PIN_FUNC_GPIO);
     gpio_set_direction(lcd.config.bus.leh, GPIO_MODE_OUTPUT);
-    gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[lcd.config.bus.clock], PIN_FUNC_GPIO);
+    gpio_ll_func_sel(GPIO_HAL_GET_HW(GPIO_PORT_0), lcd.config.bus.clock, PIN_FUNC_GPIO);
     gpio_set_direction(lcd.config.bus.clock, GPIO_MODE_OUTPUT);
-    gpio_hal_iomux_func_sel(GPIO_PIN_MUX_REG[lcd.config.bus.start_pulse], PIN_FUNC_GPIO);
+    gpio_ll_func_sel(GPIO_HAL_GET_HW(GPIO_PORT_0), lcd.config.bus.start_pulse, PIN_FUNC_GPIO);
     gpio_set_direction(lcd.config.bus.start_pulse, GPIO_MODE_OUTPUT);
 
     esp_rom_gpio_connect_out_signal(
