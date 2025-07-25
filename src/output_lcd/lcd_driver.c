@@ -22,6 +22,7 @@
 #include <driver/rmt_types.h>
 #include <driver/rmt_types_legacy.h>
 #include <esp_private/periph_ctrl.h>
+#include <esp_private/esp_clk.h>
 #include <hal/rmt_types.h>
 #include <soc/clk_tree_defs.h>
 
@@ -210,6 +211,8 @@ static void deinit_ckv_rmt() {
 }
 
 __attribute__((optimize("O3"))) IRAM_ATTR static void lcd_isr_vsync(void* args) {
+    // The critical section needs to declare the __DECLARE_RCC_ATOMIC_ENV variable in advance
+    int __DECLARE_RCC_ATOMIC_ENV __attribute__ ((unused));
     bool need_yield = false;
 
     uint32_t intr_status = lcd_ll_get_interrupt_status(lcd.hal.dev);
@@ -282,15 +285,12 @@ static esp_err_t init_dma_trans_link() {
         .direction = GDMA_CHANNEL_DIRECTION_TX,
     };
     ESP_RETURN_ON_ERROR(
-        gdma_new_channel(&dma_chan_config, &lcd.dma_chan), TAG, "alloc DMA channel failed"
+        gdma_new_ahb_channel(&dma_chan_config, &lcd.dma_chan), TAG, "alloc DMA channel failed"
     );
     gdma_trigger_t trigger = GDMA_MAKE_TRIGGER(GDMA_TRIG_PERIPH_LCD, 0);
     ESP_RETURN_ON_ERROR(gdma_connect(lcd.dma_chan, trigger), TAG, "dma connect error");
-    gdma_transfer_ability_t ability = {
-        .psram_trans_align = 64,
-        .sram_trans_align = 4,
-    };
-    ESP_RETURN_ON_ERROR(gdma_set_transfer_ability(lcd.dma_chan, &ability), TAG, "dma setup error");
+    gdma_transfer_config_t transfer_config = {0};
+    ESP_RETURN_ON_ERROR(gdma_config_transfer(lcd.dma_chan, &transfer_config), TAG, "dma setup error");
 
     gdma_tx_event_callbacks_t cbs = {
         .on_trans_eof = lcd_rgb_panel_eof_handler,
@@ -470,6 +470,8 @@ static void free_lcd_buffers() {
  * Initialize the LCD peripheral itself and install interrupts.
  */
 static esp_err_t init_lcd_peripheral() {
+    // The critical section needs to declare the __DECLARE_RCC_ATOMIC_ENV variable in advance
+    int __DECLARE_RCC_ATOMIC_ENV __attribute__ ((unused));
     esp_err_t ret = ESP_OK;
 
     // enable APB to access LCD registers
@@ -540,6 +542,8 @@ static esp_err_t init_lcd_peripheral() {
 }
 
 static void deinit_lcd_peripheral() {
+    // The critical section needs to declare the __DECLARE_RCC_ATOMIC_ENV variable in advance
+    int __DECLARE_RCC_ATOMIC_ENV __attribute__ ((unused));
     // disable and free interrupts
     esp_intr_disable(lcd.vsync_intr);
     esp_intr_disable(lcd.done_intr);
@@ -603,6 +607,8 @@ void epd_lcd_deinit() {
 }
 
 void epd_lcd_set_pixel_clock_MHz(int frequency) {
+    // The critical section needs to declare the __DECLARE_RCC_ATOMIC_ENV variable in advance
+    int __DECLARE_RCC_ATOMIC_ENV __attribute__ ((unused));
     lcd.config.pixel_clock = frequency * 1000 * 1000;
 
     // set pclk
@@ -630,6 +636,8 @@ void epd_lcd_set_pixel_clock_MHz(int frequency) {
 }
 
 void IRAM_ATTR epd_lcd_start_frame() {
+    // The critical section needs to declare the __DECLARE_RCC_ATOMIC_ENV variable in advance
+    int __DECLARE_RCC_ATOMIC_ENV __attribute__ ((unused));
     int initial_lines = min(LINE_BATCH, lcd.display_lines);
 
     // hsync: pulse with, back porch, active width, front porch
